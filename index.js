@@ -88,6 +88,15 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
   })
 }
 
+IndexedTarball.prototype.list = function (cb) {
+  var self = this
+
+  this.lock.readLock(function (release) {
+    release()
+    process.nextTick(cb, null, Object.keys(self.index))
+  })
+}
+
 // Write the index file (JSON) to the tar pack stream.
 IndexedTarball.prototype._packIndex = function (pack, cb) {
   var self = this
@@ -151,7 +160,7 @@ function tar_readFinalFile (fd, size, cb) {
         var fileBuf = Buffer.alloc(fileSize)
         fs.read(fd, fileBuf, 0, fileSize, offset + 512, function (err, readSize) {
           if (err) return cb(err)
-          if (fileSize !== readSize) return cb(new Error('read size !== expected size'))
+          if (fileSize !== readSize) console.error('WARNING: read size !== expected size (' + fileSize + ' vs ' + readSize + ')')
           cb(null, fileBuf, offset)
         })
       } else {
