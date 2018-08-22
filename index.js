@@ -30,6 +30,10 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
   readable.pipe(
     pack.entry({ name: filepath, size: size }, function (err) {
       if (err) return cb(err)
+
+      self.index[filepath] = { offset: self.length }
+      self.length += size
+
       self._packIndex(pack, function (err) {
         if (err) return cb(err)
         pack.finalize()
