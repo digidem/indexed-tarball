@@ -41,9 +41,9 @@ Creates or opens an indexed tarball. These are compatible with regular tarballs,
 
 If `opts.multifile` is set, further syncfiles will be searched for an opened as well.
 
-## tarball.append(filepath, readStream, cb)
+## tarball.append(filepath, readStream, size, cb)
 
-Writes the contents of the readable stream `readStream` to the archive under the path `filepath`. `cb` is called when the write has been persisted to disk.
+Writes the contents of the readable stream `readStream` of byte length `size` to the archive under the path `filepath`. `cb` is called when the write has been persisted to disk.
 
 ## tarball.pop(cb)
 

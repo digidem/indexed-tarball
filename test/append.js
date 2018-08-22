@@ -12,32 +12,51 @@ test('can append a file', function (t) {
   tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
-    var tarball = new Tarball(path.join(dir, 'file.tar'))
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
     tarball.append('hello.txt', fromString(data), data.length, function (err) {
       t.error(err, 'append ok')
 
-      // TODO: helper func to check that tarball matches expected data
-      var ex = tar.extract()
-      fs.createReadStream(path.join(dir, 'file.tar'))
-        .pipe(ex)
-      var entries = 0
-      ex.on('entry', function (header, stream, next) {
-        entries++
-        t.equals(entries, 1, 'one entry')
-        t.equals(header.name, 'hello.txt', 'contents match')
-        t.equals(header.type, 'file', 'type matches')
-        collect(stream, function (err, data) {
-          t.error(err)
-          t.equals(data.toString(), 'greetings friend!')
-          next()
-        })
-      })
+      parseTarball(filepath, function (err, res) {
+        t.error(err, 'parsed tarball ok')
 
-      ex.once('finish', function () {
+        t.equals(res.length, 2, 'two entries')
+
+        t.equals(res[0].name, 'hello.txt', 'contents match')
+        t.equals(res[0].type, 'file', 'type matches')
+        t.equals(res[0].data.toString(), 'greetings friend!')
+
+        t.equals(res[1].name, '___index.json', 'contents match')
+        t.equals(res[1].type, 'file', 'type matches')
+        t.equals(res[1].data.toString(), '{}')
+
         cleanup()
         t.end()
       })
     })
   })
 })
+
+function parseTarball (filepath, cb) {
+  var res = []
+  var error
+
+  var ex = tar.extract()
+  fs.createReadStream(filepath).pipe(ex)
+
+  ex.on('entry', function (header, stream, next) {
+    var e = {
+      name: header.name,
+      type: header.type
+    }
+    res.push(e)
+    collect(stream, function (err, data) {
+      error = err || error
+      e.data = data
+      next()
+    })
+  })
+
+  ex.once('finish', cb.bind(null, error, res))
+}
