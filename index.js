@@ -1,6 +1,7 @@
 var fs = require('fs')
 var eos = require('end-of-stream')
 var tar = require('tar-stream')
+var rwlock = require('rwlock')
 var fromBuffer = require('./util').fromBuffer
 
 module.exports = IndexedTarball
@@ -9,6 +10,8 @@ function IndexedTarball (filepath) {
   if (!(this instanceof IndexedTarball)) return new IndexedTarball(filepath)
 
   this.filepath = filepath
+
+  this.lock = new rwlock()
 
   try {
     // exists
@@ -27,55 +30,62 @@ function IndexedTarball (filepath) {
 IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
   var self = this
 
-  // 1. Refresh the index & its byte offset.
-  // TODO: cache this info for future appends
-  this._populateIndex(function (err, offset) {
-    if (err) return cb(err)
+  this.lock.writeLock(function (release) {
+    function done (err) {
+      release()
+      cb(err)
+    }
 
-    if (typeof offset === 'number') {
-      // 2. Truncate the file to remove the old index.
-      fs.truncate(self.filepath, offset, function (err) {
-        if (err) return cb(err)
-        write(offset)
+    // 1. Refresh the index & its byte offset.
+    // TODO: cache this info for future appends
+    self._populateIndex(function (err, offset) {
+      if (err) return done(err)
+
+      if (typeof offset === 'number') {
+        // 2. Truncate the file to remove the old index.
+        fs.truncate(self.filepath, offset, function (err) {
+          if (err) return done(err)
+          write(offset)
+        })
+      } else {
+        write()
+      }
+    })
+
+    function write (start) {
+      // 3. Prepare the tar archive for appending.
+      var fsOpts = {
+        flags: 'r+',
+        start: start !== undefined ? start : self.length - 512 * 2
+      }
+      if (fsOpts.start < 0) fsOpts.start = 0
+      var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+
+      var pack = tar.pack()
+
+      // 4. Append the new file & index.
+      readable.pipe(
+        pack.entry({ name: filepath, size: size }, function (err) {
+          if (err) return done(err)
+
+          // Update the in-memory index.
+          self.index[filepath] = { offset: self.length }
+
+          // Write the new index to the end of the archive.
+          self._packIndex(pack, function (err) {
+            if (err) return done(err)
+            pack.finalize()
+          })
+        }))
+
+      // 5. Do the writes & cleanup.
+      eos(pack.pipe(appendStream), function (err) {
+        if (err) return done(err)
+        self.length = fs.statSync(self.filepath).size
+        done()
       })
-    } else {
-      write()
     }
   })
-
-  function write (start) {
-    // 3. Prepare the tar archive for appending.
-    var fsOpts = {
-      flags: 'r+',
-      start: start !== undefined ? start : self.length - 512 * 2
-    }
-    if (fsOpts.start < 0) fsOpts.start = 0
-    var appendStream = fs.createWriteStream(self.filepath, fsOpts)
-
-    var pack = tar.pack()
-
-    // 4. Append the new file & index.
-    readable.pipe(
-      pack.entry({ name: filepath, size: size }, function (err) {
-        if (err) return cb(err)
-
-        // Update the in-memory index.
-        self.index[filepath] = { offset: self.length }
-
-        // Write the new index to the end of the archive.
-        self._packIndex(pack, function (err) {
-          if (err) return cb(err)
-          pack.finalize()
-        })
-      }))
-
-    // 5. Do the writes & cleanup.
-    eos(pack.pipe(appendStream), function (err) {
-      if (err) return cb(err)
-      self.length = fs.statSync(self.filepath).size
-      cb()
-    })
-  }
 }
 
 // Write the index file (JSON) to the tar pack stream.

@@ -17,6 +17,7 @@
   "dependencies": {
     "collect-stream": "^1.2.1",
     "end-of-stream": "^1.4.1",
+    "rwlock": "^5.0.0",
     "tar-stream": "^1.6.1",
     "tmp": "0.0.33"
   },
