@@ -15,7 +15,9 @@
   },
   "keywords": [],
   "dependencies": {
-    "from2": "^2.3.0",
+    "collect-stream": "^1.2.1",
+    "end-of-stream": "^1.4.1",
+    "tar-stream": "^1.6.1",
     "tmp": "0.0.33"
   },
   "devDependencies": {
