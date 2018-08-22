@@ -32,7 +32,6 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
       if (err) return cb(err)
 
       self.index[filepath] = { offset: self.length }
-      self.length += size
 
       self._packIndex(pack, function (err) {
         if (err) return cb(err)
@@ -40,14 +39,18 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
       })
     }))
 
-  eos(pack.pipe(fs.createWriteStream(this.filepath)), cb)
+  eos(pack.pipe(fs.createWriteStream(this.filepath)), function (err) {
+    if (err) return cb(err)
+    self.length = fs.statSync(self.filepath).size
+    cb()
+  })
 }
 
 // Write the index file (JSON) to the tar pack stream.
 IndexedTarball.prototype._packIndex = function (pack, cb) {
   var self = this
 
-  if (!this.index) this._lookupIndex(write)
+  if (!this.index) this._populateIndex(write)
   else write()
 
   function write (err) {
@@ -61,5 +64,43 @@ IndexedTarball.prototype._packIndex = function (pack, cb) {
 }
 
 // Search the tar archive backwards for the index file.
-IndexedTarball.prototype._lookupIndex = function (cb) {
+IndexedTarball.prototype._populateIndex = function (cb) {
+  var sector = new Buffer(512)  // tar uses 512-byte sectors
+
+  var startOffset = this.length - 512 * 3  // last two sectors are NULs
+
+  fs.open(this.filepath, 'r', function (err, fd) {
+    if (err) return cb(err)
+
+    ;(function next (offset) {
+      if (offset <= 0) return cleanup(new Error('could not find index'))
+      fs.read(fd, sector, 0, 512, offset, function (err, size, buf) {
+        if (err) return cleanup(err)
+        if (buf.readUInt8(0) === 0x0) return next(offset - 512)
+        var index = parseIndexFromBuffer(buf)
+        if (!index) return cb(new Error('could not parse index data'))
+        cleanup()
+      })
+    })(startOffset)
+  })
+
+  function cleanup (err) {
+    fs.close(fd, cb.bind(null, err))
+  }
+}
+
+// Start reading a buffer from pos=0 and parse the text into JSON.
+function parseIndexFromBuffer (buf) {
+  for (var i=0; i < buf.length; i++) {
+    if (buf.readUInt8(i) === 0x0) {
+      var json = buf.slice(0, i).toString()
+      try {
+        var index = JSON.parse(json)
+        return index
+      } catch (e) {
+        return null
+      }
+    }
+  }
+  return null
 }
