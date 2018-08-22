@@ -11,13 +11,17 @@ function IndexedTarball (filepath) {
 }
 
 IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
+  var self = this
   var pack = tar.pack()
-  var ps = pack.entry({ name: filepath, size: size }, function (err) {
+
+  readable.pipe(
+    pack.entry({ name: filepath, size: size }, function (err) {
+      if (err) return cb(err)
+      pack.finalize()
+    }))
+
+  eos(pack.pipe(fs.createWriteStream(this.filepath)), cb)
+}
     if (err) return cb(err)
-    pack.finalize()
-    cb()
-  })
-  readable.pipe(ps)
-  pack.pipe(fs.createWriteStream(this.filepath))
 }
 
