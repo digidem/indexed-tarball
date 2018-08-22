@@ -29,7 +29,8 @@ test('can append a file', function (t) {
 
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        t.equals(res[1].data.toString(), '{}')
+        var index = JSON.parse(res[1].data.toString())
+        t.deepEquals(index, { 'hello.txt': { offset: 0 } })
 
         cleanup()
         t.end()
