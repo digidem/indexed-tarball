@@ -6,13 +6,15 @@ var tmp = require('tmp')
 var Readable = require('stream').Readable
 var tar = require('tar-stream')
 var test = require('tape')
+var fromString = require('../util').fromString
 
 test('can append a file', function (t) {
   tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var tarball = new Tarball(path.join(dir, 'file.tar'))
-    tarball.append('hello.txt', fromString('greetings!'), 10, function (err) {
+    var data = 'greetings friend!'
+    tarball.append('hello.txt', fromString(data), data.length, function (err) {
       t.error(err, 'append ok')
 
       // TODO: helper func to check that tarball matches expected data
@@ -27,7 +29,7 @@ test('can append a file', function (t) {
         t.equals(header.type, 'file', 'type matches')
         collect(stream, function (err, data) {
           t.error(err)
-          t.equals(data, 'greetings!')
+          t.equals(data.toString(), 'greetings friend!')
           next()
         })
       })
@@ -39,13 +41,3 @@ test('can append a file', function (t) {
     })
   })
 })
-
-function fromString (str) {
-  var data = new Readable()
-  data._read = function (size) {
-    if (str.length <= 0) return this.push(null)
-    var push = str.slice(0, size)
-    if (this.push(push)) str = str.slice(size)
-  }
-  return data
-}
