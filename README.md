@@ -20,7 +20,7 @@ This is done by generating a special "index file" that is always appended to the
 ```js
 var Tarball = require('indexed-tarball')
 
-console.log('TODO')
+var tarball = new Tarball('/tmp/hello.tar')
 ```
 
 outputs
