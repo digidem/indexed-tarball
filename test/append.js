@@ -69,8 +69,7 @@ test('can append to an existing file', function (t) {
           t.equals(res[2].name, '___index.json', 'contents match')
           t.equals(res[2].type, 'file', 'type matches')
           var index = JSON.parse(res[2].data.toString())
-          t.deepEquals(index, { 'hello.txt': { offset: 0 } })
-          t.deepEquals(index, { 'beep.md': { offset: 0 } })
+          t.deepEquals(index, { 'hello.txt': { offset: 0 }, 'beep.md': { offset: 3072 } })
 
           cleanup()
           t.end()

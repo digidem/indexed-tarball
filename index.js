@@ -19,31 +19,63 @@ function IndexedTarball (filepath) {
     // new archive
     this.index = {}
     this.length = 0
+    fs.writeFileSync(filepath, '', 'utf8')  // touch new file
   }
 }
 
 // Append a file and update the index entry.
 IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
   var self = this
-  var pack = tar.pack()
 
-  readable.pipe(
-    pack.entry({ name: filepath, size: size }, function (err) {
-      if (err) return cb(err)
-
-      self.index[filepath] = { offset: self.length }
-
-      self._packIndex(pack, function (err) {
-        if (err) return cb(err)
-        pack.finalize()
-      })
-    }))
-
-  eos(pack.pipe(fs.createWriteStream(this.filepath)), function (err) {
+  // 1. Refresh the index & its byte offset.
+  // TODO: cache this info for future appends
+  this._populateIndex(function (err, offset) {
     if (err) return cb(err)
-    self.length = fs.statSync(self.filepath).size
-    cb()
+
+    if (typeof offset === 'number') {
+      // 2. Truncate the file to remove the old index.
+      fs.truncate(self.filepath, offset, function (err) {
+        if (err) return cb(err)
+        write(offset)
+      })
+    } else {
+      write()
+    }
   })
+
+  function write (start) {
+    // 3. Prepare the tar archive for appending.
+    var fsOpts = {
+      flags: 'r+',
+      start: start !== undefined ? start : self.length - 512 * 2
+    }
+    if (fsOpts.start < 0) fsOpts.start = 0
+    var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+
+    var pack = tar.pack()
+
+    // 4. Append the new file & index.
+    readable.pipe(
+      pack.entry({ name: filepath, size: size }, function (err) {
+        if (err) return cb(err)
+
+        // Update the in-memory index.
+        self.index[filepath] = { offset: self.length }
+
+        // Write the new index to the end of the archive.
+        self._packIndex(pack, function (err) {
+          if (err) return cb(err)
+          pack.finalize()
+        })
+      }))
+
+    // 5. Do the writes & cleanup.
+    eos(pack.pipe(appendStream), function (err) {
+      if (err) return cb(err)
+      self.length = fs.statSync(self.filepath).size
+      cb()
+    })
+  }
 }
 
 // Write the index file (JSON) to the tar pack stream.
@@ -56,7 +88,7 @@ IndexedTarball.prototype._packIndex = function (pack, cb) {
   function write (err) {
     if (err) return cb(err)
 
-    var indexData = new Buffer(JSON.stringify(self.index), 'utf8')
+    var indexData = Buffer.from(JSON.stringify(self.index), 'utf8')
     fromBuffer(indexData).pipe(
       pack.entry({ name: '___index.json', size: indexData.length }, cb)
     )
@@ -64,28 +96,58 @@ IndexedTarball.prototype._packIndex = function (pack, cb) {
 }
 
 // Search the tar archive backwards for the index file.
+// TODO: won't this break if the index grows larger than 512 bytes? (write test!)
 IndexedTarball.prototype._populateIndex = function (cb) {
-  var sector = new Buffer(512)  // tar uses 512-byte sectors
+  if (this.index && Object.keys(this.index).length === 0) return process.nextTick(cb)
 
+  var self = this
+  var sector = Buffer.alloc(512)  // tar uses 512-byte sectors
   var startOffset = this.length - 512 * 3  // last two sectors are NULs
 
   fs.open(this.filepath, 'r', function (err, fd) {
     if (err) return cb(err)
 
-    ;(function next (offset) {
-      if (offset <= 0) return cleanup(new Error('could not find index'))
-      fs.read(fd, sector, 0, 512, offset, function (err, size, buf) {
-        if (err) return cleanup(err)
-        if (buf.readUInt8(0) === 0x0) return next(offset - 512)
-        var index = parseIndexFromBuffer(buf)
-        if (!index) return cb(new Error('could not parse index data'))
-        cleanup()
+    tar_readFinalFile(fd, self.length, function (err, buf, offset) {
+      if (err) return cb(err)
+      var index = parseIndexFromBuffer(buf)
+      if (!index) return cb(new Error('could not parse index data'))
+      fs.close(fd, function () {
+        cb(err, offset)
       })
-    })(startOffset)
+    })
   })
+}
 
-  function cleanup (err) {
-    fs.close(fd, cb.bind(null, err))
+// Scans a tar archive from the end backwards until it finds the last entry.
+// Returns the raw buffer of the last file, and its byte offset where it begins.
+function tar_readFinalFile (fd, size, cb) {
+  var header = Buffer.alloc(512)
+  var ustarExpected = Buffer.from('7573746172003030', 'hex')
+
+  next(size - 512 * 3)
+
+  function next (offset) {
+    if (offset <= 0) return cb(new Error('could not find index'))
+
+    // read file header
+    fs.read(fd, header, 0, 512, offset, function (err, size, buf) {
+      if (err) return cb(err)
+      // look for 'ustar<NUL>00' pattern at the expected offset
+      if (ustarExpected.equals(buf.slice(257, 257 + 8))) {
+        // get the final file's size
+        var fileSize = parseInt(buf.slice(124, 124 + 12).toString())
+        if (isNaN(fileSize)) return cb(new Error('could not parse file header'))
+
+        var fileBuf = Buffer.alloc(fileSize)
+        fs.read(fd, fileBuf, 0, fileSize, offset + 512, function (err, readSize) {
+          if (err) return cb(err)
+          if (fileSize !== readSize) return cb(new Error('read size !== expected size'))
+          cb(null, fileBuf, offset)
+        })
+      } else {
+        next(offset - 512)
+      }
+    })
   }
 }
 
