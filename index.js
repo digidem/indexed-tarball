@@ -67,7 +67,7 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
         pack.entry({ name: filepath, size: size }, function (err) {
           if (err) return done(err)
 
-          archive.index[filepath] = { offset: start }
+          archive.index[filepath] = { offset: start, size: size }
 
           // Write the new index to the end of the archive.
           self._packIndex(pack, archive.index, function (err) {
