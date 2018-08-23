@@ -6,7 +6,7 @@ var tmp = require('tmp')
 var Readable = require('stream').Readable
 var tar = require('tar-stream')
 var test = require('tape')
-var fromString = require('../util').fromString
+var fromString = require('../lib/util').fromString
 
 test('can append to a new file', function (t) {
   tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {

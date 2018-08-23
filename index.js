@@ -2,7 +2,7 @@ var fs = require('fs')
 var eos = require('end-of-stream')
 var tar = require('tar-stream')
 var rwlock = require('rwlock')
-var fromBuffer = require('./util').fromBuffer
+var fromBuffer = require('./lib/util').fromBuffer
 var cached = require('./lib/cached-value')
 
 module.exports = IndexedTarball
