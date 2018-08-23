@@ -45,6 +45,11 @@ If `opts.multifile` is set, further syncfiles will be searched for an opened as 
 
 Writes the contents of the readable stream `readStream` of byte length `size` to the archive under the path `filepath`. `cb` is called when the write has been persisted to disk.
 
+## var rs = tarball.read(filepath)
+
+Returns a readable stream of the data within the archive named by `filepath`. If
+the file doesn't exist in the archive, the stream `rs` will emit an error.
+
 ## tarball.pop(cb)
 
 Truncates the syncfile such that the last file of the archive is dropped. `cb` is called once the change is persisted to disk.
