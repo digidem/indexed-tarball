@@ -17,8 +17,10 @@
   "dependencies": {
     "collect-stream": "^1.2.1",
     "end-of-stream": "^1.4.1",
+    "read-only-stream": "^2.0.0",
     "rwlock": "^5.0.0",
     "tar-stream": "^1.6.1",
+    "through2": "^2.0.3",
     "tmp": "0.0.33"
   },
   "devDependencies": {

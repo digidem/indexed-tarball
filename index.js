@@ -2,6 +2,8 @@ var fs = require('fs')
 var eos = require('end-of-stream')
 var tar = require('tar-stream')
 var rwlock = require('rwlock')
+var through = require('through2')
+var readonly = require('read-only-stream')
 var fromBuffer = require('./lib/util').fromBuffer
 var cached = require('./lib/cached-value')
 
@@ -99,8 +101,30 @@ IndexedTarball.prototype.list = function (cb) {
 }
 
 IndexedTarball.prototype.read = function (filepath) {
+  var self = this
+  var t = through()
+
   this.lock.readLock(function (release) {
+    self.archive.value(function (err, archive) {
+      if (err) {
+        release()
+        t.emit('error', err)
+        return
+      }
+
+      var entry = archive.index[filepath]
+      if (!entry) {
+        release()
+        e.emit('error', new Error('that file does not exist in the archive'))
+        return
+      }
+
+      fs.createReadStream(self.filepath, { start: entry.offset + 512, end: entry.offset + 512 + entry.size - 1 })
+        .pipe(t)
+    })
   })
+
+  return readonly(t)
 }
 
 // Write the index file (JSON) to the tar pack stream.
