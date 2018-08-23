@@ -69,7 +69,7 @@ test('can append to an existing file', function (t) {
           t.equals(res[2].name, '___index.json', 'contents match')
           t.equals(res[2].type, 'file', 'type matches')
           var index = JSON.parse(res[2].data.toString())
-          t.deepEquals(index, { 'hello.txt': { offset: 0 }, 'beep.md': { offset: 3072 } })
+          t.deepEquals(index, { 'hello.txt': { offset: 0 }, 'beep.md': { offset: 1024} })
 
           cleanup()
           t.end()
@@ -116,7 +116,7 @@ test('two concurrent writes succeed as expected', function (t) {
         t.equals(res[2].name, '___index.json', 'contents match')
         t.equals(res[2].type, 'file', 'type matches')
         var index = JSON.parse(res[2].data.toString())
-        t.deepEquals(index, { 'hello.txt': { offset: 0 }, 'beep.md': { offset: 3072 } })
+        t.deepEquals(index, { 'hello.txt': { offset: 0 }, 'beep.md': { offset: 1024 } })
 
         cleanup()
         t.end()

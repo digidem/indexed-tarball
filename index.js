@@ -3,6 +3,7 @@ var eos = require('end-of-stream')
 var tar = require('tar-stream')
 var rwlock = require('rwlock')
 var fromBuffer = require('./util').fromBuffer
+var cached = require('./lib/cached-value')
 
 module.exports = IndexedTarball
 
@@ -16,14 +17,13 @@ function IndexedTarball (filepath) {
   try {
     // exists
     var stat = fs.statSync(filepath)
-    this.index = null  // index not looked up yet
-    this.length = stat.size
   } catch (e) {
     // new archive
-    this.index = {}
-    this.length = 0
     fs.writeFileSync(filepath, '', 'utf8')  // touch new file
   }
+
+  this.archive = cached(IndexedTarball.prototype._lookupIndex.bind(this))
+  this.archive.refresh()
 }
 
 // Append a file and update the index entry.
@@ -37,26 +37,25 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
     }
 
     // 1. Refresh the index & its byte offset.
-    // TODO: cache this info for future appends
-    self._populateIndex(function (err, offset) {
+    self.archive.value(function (err, archive) {
       if (err) return done(err)
 
-      if (typeof offset === 'number') {
+      if (typeof archive.indexOffset === 'number') {
         // 2. Truncate the file to remove the old index.
-        fs.truncate(self.filepath, offset, function (err) {
+        fs.truncate(self.filepath, archive.indexOffset, function (err) {
           if (err) return done(err)
-          write(offset)
+          write(archive, archive.indexOffset)
         })
       } else {
-        write()
+        write(archive, undefined)
       }
     })
 
-    function write (start) {
+    function write (archive, start) {
       // 3. Prepare the tar archive for appending.
       var fsOpts = {
         flags: 'r+',
-        start: start !== undefined ? start : self.length - 512 * 2
+        start: start !== undefined ? start : 0
       }
       if (fsOpts.start < 0) fsOpts.start = 0
       var appendStream = fs.createWriteStream(self.filepath, fsOpts)
@@ -68,11 +67,10 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
         pack.entry({ name: filepath, size: size }, function (err) {
           if (err) return done(err)
 
-          // Update the in-memory index.
-          self.index[filepath] = { offset: self.length }
+          archive.index[filepath] = { offset: start }
 
           // Write the new index to the end of the archive.
-          self._packIndex(pack, function (err) {
+          self._packIndex(pack, archive.index, function (err) {
             if (err) return done(err)
             pack.finalize()
           })
@@ -81,8 +79,9 @@ IndexedTarball.prototype.append = function (filepath, readable, size, cb) {
       // 5. Do the writes & cleanup.
       eos(pack.pipe(appendStream), function (err) {
         if (err) return done(err)
-        self.length = fs.statSync(self.filepath).size
-        done()
+
+        // Refresh the archive info in memory
+        self.archive.refresh(done)
       })
     }
   })
@@ -92,8 +91,10 @@ IndexedTarball.prototype.list = function (cb) {
   var self = this
 
   this.lock.readLock(function (release) {
-    release()
-    process.nextTick(cb, null, Object.keys(self.index))
+    self.archive.value(function (err, archive) {
+      release()
+      cb(err, Object.keys(archive.index))
+    })
   })
 }
 
@@ -103,43 +104,43 @@ IndexedTarball.prototype.read = function (filepath) {
 }
 
 // Write the index file (JSON) to the tar pack stream.
-IndexedTarball.prototype._packIndex = function (pack, cb) {
-  var self = this
-
-  if (!this.index) this._populateIndex(write)
-  else write()
-
-  function write (err) {
-    if (err) return cb(err)
-
-    var indexData = Buffer.from(JSON.stringify(self.index), 'utf8')
-    fromBuffer(indexData).pipe(
-      pack.entry({ name: '___index.json', size: indexData.length }, cb)
-    )
-  }
+IndexedTarball.prototype._packIndex = function (pack, newIndex, cb) {
+  var indexData = Buffer.from(JSON.stringify(newIndex), 'utf8')
+  fromBuffer(indexData).pipe(
+    pack.entry({ name: '___index.json', size: indexData.length }, cb)
+  )
 }
 
 // Search the tar archive backwards for the index file.
 // TODO: won't this break if the index grows larger than 512 bytes? (write test!)
-IndexedTarball.prototype._populateIndex = function (cb) {
-  if (this.index && Object.keys(this.index).length === 0) return process.nextTick(cb)
-
+IndexedTarball.prototype._lookupIndex = function (cb) {
   var self = this
   var sector = Buffer.alloc(512)  // tar uses 512-byte sectors
-  var startOffset = this.length - 512 * 3  // last two sectors are NULs
 
-  fs.open(this.filepath, 'r', function (err, fd) {
+  fs.stat(this.filepath, function (err, stat) {
     if (err) return cb(err)
+    var size = stat.size
 
-    tar_readFinalFile(fd, self.length, function (err, buf, offset) {
+    // Archive is fresh & empty
+    if (size < 1024) {
+      return cb(null, { index: {}, indexOffset: 0, fileSize: size })
+    }
+
+    fs.open(self.filepath, 'r', function (err, fd) {
       if (err) return cb(err)
-      try {
-        self.index = JSON.parse(buf.toString())
-      } catch (e) {
-        return cb(e)
-      }
-      fs.close(fd, function () {
-        cb(err, offset)
+
+      tar_readFinalFile(fd, size, function (err, buf, offset) {
+        if (err) return cb(err)
+        var index
+        try {
+          index = JSON.parse(buf.toString())
+        } catch (e) {
+          return cb(e)
+        }
+        fs.close(fd, function (err) {
+          if (err) return cb(err)
+          cb(null, { index: index, indexOffset: offset, fileSize: size })
+        })
       })
     })
   })
