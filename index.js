@@ -128,8 +128,11 @@ IndexedTarball.prototype._populateIndex = function (cb) {
 
     tar_readFinalFile(fd, self.length, function (err, buf, offset) {
       if (err) return cb(err)
-      var index = parseIndexFromBuffer(buf)
-      if (!index) return cb(new Error('could not parse index data'))
+      try {
+        self.index = JSON.parse(buf.toString())
+      } catch (e) {
+        return cb(e)
+      }
       fs.close(fd, function () {
         cb(err, offset)
       })
@@ -153,14 +156,14 @@ function tar_readFinalFile (fd, size, cb) {
       if (err) return cb(err)
       // look for 'ustar<NUL>00' pattern at the expected offset
       if (ustarExpected.equals(buf.slice(257, 257 + 8))) {
-        // get the final file's size
-        var fileSize = parseInt(buf.slice(124, 124 + 12).toString())
+        // get the final file's size (octal)
+        var fileSize = parseInt(buf.slice(124, 124 + 12).toString(), 8)
         if (isNaN(fileSize)) return cb(new Error('could not parse file header'))
 
         var fileBuf = Buffer.alloc(fileSize)
         fs.read(fd, fileBuf, 0, fileSize, offset + 512, function (err, readSize) {
           if (err) return cb(err)
-          if (fileSize !== readSize) console.error('WARNING: read size !== expected size (' + fileSize + ' vs ' + readSize + ')')
+          if (fileSize !== readSize) console.error('WARNING: read size !== expected size (' + readSize + ' vs ' + fileSize + ')')
           cb(null, fileBuf, offset)
         })
       } else {
@@ -168,20 +171,4 @@ function tar_readFinalFile (fd, size, cb) {
       }
     })
   }
-}
-
-// Start reading a buffer from pos=0 and parse the text into JSON.
-function parseIndexFromBuffer (buf) {
-  for (var i=0; i < buf.length; i++) {
-    if (buf.readUInt8(i) === 0x0) {
-      var json = buf.slice(0, i).toString()
-      try {
-        var index = JSON.parse(json)
-        return index
-      } catch (e) {
-        return null
-      }
-    }
-  }
-  return null
 }

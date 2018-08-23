@@ -58,7 +58,7 @@ test('can list an archive with many files (concurrent)', function (t) {
     var tarball = new Tarball(filepath)
 
     var n = 0
-    for (var i=0; i < 61; i++) {
+    for (var i=0; i < 100; i++) {
       n++
       var data = 'this is message #' + i
       tarball.append('hello_' + i + '.txt', fromString(data), data.length, function (err) {
