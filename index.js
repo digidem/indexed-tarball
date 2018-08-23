@@ -97,6 +97,11 @@ IndexedTarball.prototype.list = function (cb) {
   })
 }
 
+IndexedTarball.prototype.read = function (filepath) {
+  this.lock.readLock(function (release) {
+  })
+}
+
 // Write the index file (JSON) to the tar pack stream.
 IndexedTarball.prototype._packIndex = function (pack, cb) {
   var self = this
