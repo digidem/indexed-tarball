@@ -115,7 +115,7 @@ IndexedTarball.prototype.read = function (filepath) {
       var entry = archive.index[filepath]
       if (!entry) {
         release()
-        e.emit('error', new Error('that file does not exist in the archive'))
+        t.emit('error', new Error('that file does not exist in the archive'))
         return
       }
 
