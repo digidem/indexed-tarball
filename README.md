@@ -11,6 +11,10 @@ A small extension to the [tar archive format](https://en.wikipedia.org/wiki/Tar_
 
 This is done by generating a special "index file" that is always appended to the end of the tar achive, which maps file paths within the archive to byte offsets.
 
+## Compatibility
+
+Tarballs created with this module are still plain old tar files, and will work with existing utilities.
+
 ## Status
 
 > implemented except multi-file
