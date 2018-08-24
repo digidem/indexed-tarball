@@ -9,7 +9,7 @@ var test = require('tape')
 var fromString = require('../lib/util').fromString
 
 test('can list an archive with one file', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
@@ -30,7 +30,7 @@ test('can list an archive with one file', function (t) {
 })
 
 test('can list an archive with one file (concurrent)', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
@@ -51,14 +51,14 @@ test('can list an archive with one file (concurrent)', function (t) {
 })
 
 test('can list an archive with many files (concurrent)', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
 
     var n = 0
-    for (var i=0; i < 100; i++) {
+    for (var i = 0; i < 100; i++) {
       n++
       var data = 'this is message #' + i
       tarball.append('hello_' + i + '.txt', fromString(data), data.length, function (err) {

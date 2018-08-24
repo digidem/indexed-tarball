@@ -28,4 +28,3 @@ function parseTarball (filepath, cb) {
 
   ex.once('finish', cb.bind(null, error, res))
 }
-

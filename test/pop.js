@@ -10,7 +10,7 @@ var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
 
 test('can pop an archive with two files', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
@@ -50,7 +50,7 @@ test('can pop an archive with two files', function (t) {
 })
 
 test('can pop an archive with one file', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')

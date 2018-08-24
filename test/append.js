@@ -10,7 +10,7 @@ var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
 
 test('can append to a new file', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
@@ -41,7 +41,7 @@ test('can append to a new file', function (t) {
 })
 
 test('can append to an existing file', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
@@ -81,7 +81,7 @@ test('can append to an existing file', function (t) {
 })
 
 test('two concurrent writes succeed as expected', function (t) {
-  tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')

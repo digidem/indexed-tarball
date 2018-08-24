@@ -21,7 +21,7 @@ function IndexedTarball (filepath) {
     var stat = fs.statSync(filepath)
   } catch (e) {
     // new archive
-    fs.writeFileSync(filepath, '', 'utf8')  // touch new file
+    fs.writeFileSync(filepath, '', 'utf8') // touch new file
   }
 
   this.archive = cached(IndexedTarball.prototype._lookupIndex.bind(this))
@@ -198,7 +198,7 @@ IndexedTarball.prototype._packIndex = function (pack, newIndex, cb) {
 // TODO: won't this break if the index grows larger than 512 bytes? (write test!)
 IndexedTarball.prototype._lookupIndex = function (cb) {
   var self = this
-  var sector = Buffer.alloc(512)  // tar uses 512-byte sectors
+  var sector = Buffer.alloc(512) // tar uses 512-byte sectors
 
   fs.stat(this.filepath, function (err, stat) {
     if (err) return cb(err)
