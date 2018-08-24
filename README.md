@@ -13,20 +13,36 @@ This is done by generating a special "index file" that is always appended to the
 
 ## Status
 
-> proposal
+> implemented except multi-file
 
 ## Usage
 
 ```js
 var Tarball = require('indexed-tarball')
+var through = require('through2')
 
-var tarball = new Tarball('/tmp/hello.tar')
+var tarball = new Tarball('file.tar')
+
+var t = through()
+t.end('hello world')
+
+tarball.append('hello.txt', t, 11, function () {
+  tarball.list(function (err, files) {
+    console.log('files', files)
+
+    tarball.read('hello.txt')
+      .on('data', function (buf) {
+        console.log('data', buf.toString())
+      })
+  })
+})
 ```
 
 outputs
 
 ```
-TODO
+files [ 'hello.txt' ]
+data hello world
 ```
 
 ## API
@@ -72,7 +88,7 @@ $ npm install indexed-tarball
 
 ## Multi-file support
 
-**TODO**: how does multi-file work?
+**TODO**
 
 ## License
 
