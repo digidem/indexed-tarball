@@ -7,6 +7,7 @@ var Readable = require('stream').Readable
 var tar = require('tar-stream')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
+var parseTarball = require('./util').parseTarball
 
 test('can append to a new file', function (t) {
   tmp.dir({unsafeCleanup:true}, function (err, dir, cleanup) {
@@ -124,26 +125,3 @@ test('two concurrent writes succeed as expected', function (t) {
     }
   })
 })
-
-function parseTarball (filepath, cb) {
-  var res = []
-  var error
-
-  var ex = tar.extract()
-  fs.createReadStream(filepath).pipe(ex)
-
-  ex.on('entry', function (header, stream, next) {
-    var e = {
-      name: header.name,
-      type: header.type
-    }
-    res.push(e)
-    collect(stream, function (err, data) {
-      error = err || error
-      e.data = data
-      next()
-    })
-  })
-
-  ex.once('finish', cb.bind(null, error, res))
-}

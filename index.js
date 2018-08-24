@@ -127,6 +127,65 @@ IndexedTarball.prototype.read = function (filepath) {
   return readonly(t)
 }
 
+// TODO: might be nice if this also returned the final file, but we don't want
+// to buffer the entire contents, and can't really stream it if it's being
+// truncated from the archive file..
+IndexedTarball.prototype.pop = function (cb) {
+  var self = this
+
+  this.lock.writeLock(function (release) {
+    function done (err) {
+      release()
+      cb(err)
+    }
+
+    self.archive.value(function (err, archive) {
+      if (err) return done(err)
+
+      // Get the last file in the archive.
+      var name = getFileLargestOffset(archive.index)
+      var offset = archive.index[name].offset
+
+      fs.truncate(self.filepath, offset, function (err) {
+        if (err) return done(err)
+        delete archive.index[name]
+
+        self._writeNewIndex(archive.index, offset, function (err) {
+          if (err) return done(err)
+          self.archive.refresh(done)
+        })
+      })
+    })
+  })
+}
+
+IndexedTarball.prototype._writeNewIndex = function (newIndex, offset, cb) {
+  var self = this
+
+  // 1. Truncate at offset.
+  fs.truncate(this.filepath, offset, function (err) {
+    if (err) return cb(err)
+
+    // 2. Prepare the tar archive for appending.
+    var fsOpts = {
+      flags: 'r+',
+      start: offset
+    }
+    var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+
+    var pack = tar.pack()
+
+    // 3. Write the new index to the end of the archive.
+    self._packIndex(pack, newIndex, function (err) {
+      if (err) return cb(err)
+      pack.finalize()
+    })
+
+    // 4. Do the writes & cleanup.
+    eos(pack.pipe(appendStream), cb)
+  })
+}
+
 // Write the index file (JSON) to the tar pack stream.
 IndexedTarball.prototype._packIndex = function (pack, newIndex, cb) {
   var indexData = Buffer.from(JSON.stringify(newIndex), 'utf8')
@@ -179,7 +238,7 @@ function tar_readFinalFile (fd, size, cb) {
   next(size - 512 * 3)
 
   function next (offset) {
-    if (offset <= 0) return cb(new Error('could not find index'))
+    if (offset < 0) return cb(new Error('could not find index'))
 
     // read file header
     fs.read(fd, header, 0, 512, offset, function (err, size, buf) {
@@ -201,4 +260,14 @@ function tar_readFinalFile (fd, size, cb) {
       }
     })
   }
+}
+
+// Returns the entry nearest the end of the index.
+function getFileLargestOffset (index) {
+  var key
+  for (var name in index) {
+    var entry = index[name]
+    if (!key || entry.offset > index[key].offset) key = name
+  }
+  return key
 }
