@@ -1,6 +1,5 @@
 var Tarball = require('..')
 var collect = require('collect-stream')
-var fs = require('fs')
 var path = require('path')
 var tmp = require('tmp')
 var test = require('tape')

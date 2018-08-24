@@ -1,10 +1,6 @@
 var Tarball = require('..')
-var collect = require('collect-stream')
-var fs = require('fs')
 var path = require('path')
 var tmp = require('tmp')
-var Readable = require('stream').Readable
-var tar = require('tar-stream')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
@@ -70,7 +66,7 @@ test('can append to an existing file', function (t) {
           t.equals(res[2].name, '___index.json', 'contents match')
           t.equals(res[2].type, 'file', 'type matches')
           var index = JSON.parse(res[2].data.toString())
-          t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11} })
+          t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
           cleanup()
           t.end()
@@ -117,7 +113,7 @@ test('two concurrent writes succeed as expected', function (t) {
         t.equals(res[2].name, '___index.json', 'contents match')
         t.equals(res[2].type, 'file', 'type matches')
         var index = JSON.parse(res[2].data.toString())
-        t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11} })
+        t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
         cleanup()
         t.end()
