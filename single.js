@@ -1,0 +1,232 @@
+var fs = require('fs')
+var eos = require('end-of-stream')
+var tar = require('tar-stream')
+var RWLock = require('rwlock')
+var through = require('through2')
+var readonly = require('read-only-stream')
+var fromBuffer = require('./lib/util').fromBuffer
+var cached = require('./lib/cached-value')
+var tarUtil = require('./lib/tar')
+
+module.exports = SingleTarball
+
+function SingleTarball (filepath, opts) {
+  this.filepath = filepath
+
+  this.lock = new RWLock()
+
+  if (!fs.existsSync(filepath)) fs.writeFileSync(filepath, '', 'utf8') // touch new file
+
+  this.archive = cached(SingleTarball.prototype._lookupIndex.bind(this))
+  this.archive.refresh()
+}
+
+// Append a file and update the index entry.
+SingleTarball.prototype.append = function (filepath, readable, size, cb) {
+  var self = this
+
+  this.lock.writeLock(function (release) {
+    function done (err) {
+      release()
+      cb(err)
+    }
+
+    // 1. Refresh the index & its byte offset.
+    self.archive.value(function (err, archive) {
+      if (err) return done(err)
+
+      if (typeof archive.indexOffset === 'number') {
+        // 2. Truncate the file to remove the old index.
+        fs.truncate(self.filepath, archive.indexOffset, function (err) {
+          if (err) return done(err)
+          write(archive, archive.indexOffset)
+        })
+      } else {
+        write(archive, undefined)
+      }
+    })
+
+    function write (archive, start) {
+      // 3. Prepare the tar archive for appending.
+      var fsOpts = {
+        flags: 'r+',
+        start: start !== undefined ? start : 0
+      }
+      if (fsOpts.start < 0) fsOpts.start = 0
+      var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+
+      var pack = tar.pack()
+
+      // 4. Append the new file & index.
+      readable.pipe(
+        pack.entry({ name: filepath, size: size }, function (err) {
+          if (err) return done(err)
+
+          archive.index[filepath] = { offset: start, size: size }
+
+          // Write the new index to the end of the archive.
+          self._packIndex(pack, archive.index, function (err) {
+            if (err) return done(err)
+            pack.finalize()
+          })
+        }))
+
+      // 5. Do the writes & cleanup.
+      eos(pack.pipe(appendStream), function (err) {
+        if (err) return done(err)
+
+        // Refresh the archive info in memory
+        self.archive.refresh(done)
+      })
+    }
+  })
+}
+
+SingleTarball.prototype.list = function (cb) {
+  var self = this
+
+  this.lock.readLock(function (release) {
+    self.archive.value(function (err, archive) {
+      release()
+      cb(err, Object.keys(archive.index))
+    })
+  })
+}
+
+SingleTarball.prototype.read = function (filepath) {
+  var self = this
+  var t = through()
+
+  this.lock.readLock(function (release) {
+    self.archive.value(function (err, archive) {
+      if (err) {
+        release()
+        t.emit('error', err)
+        return
+      }
+
+      var entry = archive.index[filepath]
+      if (!entry) {
+        release()
+        t.emit('error', new Error('that file does not exist in the archive'))
+        return
+      }
+
+      fs.createReadStream(self.filepath, { start: entry.offset + 512, end: entry.offset + 512 + entry.size - 1 })
+        .pipe(t)
+    })
+  })
+
+  return readonly(t)
+}
+
+// TODO: might be nice if this also returned the final file, but we don't want
+// to buffer the entire contents, and can't really stream it if it's being
+// truncated from the archive file..
+SingleTarball.prototype.pop = function (cb) {
+  var self = this
+
+  this.lock.writeLock(function (release) {
+    function done (err) {
+      release()
+      cb(err)
+    }
+
+    self.archive.value(function (err, archive) {
+      if (err) return done(err)
+
+      // Get the last file in the archive.
+      var name = getFileLargestOffset(archive.index)
+      var offset = archive.index[name].offset
+
+      fs.truncate(self.filepath, offset, function (err) {
+        if (err) return done(err)
+        delete archive.index[name]
+
+        self._writeNewIndex(archive.index, offset, function (err) {
+          if (err) return done(err)
+          self.archive.refresh(done)
+        })
+      })
+    })
+  })
+}
+
+SingleTarball.prototype._writeNewIndex = function (newIndex, offset, cb) {
+  var self = this
+
+  // 1. Truncate at offset.
+  fs.truncate(this.filepath, offset, function (err) {
+    if (err) return cb(err)
+
+    // 2. Prepare the tar archive for appending.
+    var fsOpts = {
+      flags: 'r+',
+      start: offset
+    }
+    var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+
+    var pack = tar.pack()
+
+    // 3. Write the new index to the end of the archive.
+    self._packIndex(pack, newIndex, function (err) {
+      if (err) return cb(err)
+      pack.finalize()
+    })
+
+    // 4. Do the writes & cleanup.
+    eos(pack.pipe(appendStream), cb)
+  })
+}
+
+// Write the index file (JSON) to the tar pack stream.
+SingleTarball.prototype._packIndex = function (pack, newIndex, cb) {
+  var indexData = Buffer.from(JSON.stringify(newIndex), 'utf8')
+  fromBuffer(indexData).pipe(
+    pack.entry({ name: '___index.json', size: indexData.length }, cb)
+  )
+}
+
+// Search the tar archive backwards for the index file.
+// TODO: won't this break if the index grows larger than 512 bytes? (write test!)
+SingleTarball.prototype._lookupIndex = function (cb) {
+  var self = this
+
+  fs.stat(this.filepath, function (err, stat) {
+    if (err) return cb(err)
+    var size = stat.size
+
+    // Archive is fresh & empty
+    if (size < 1024) {
+      return cb(null, { index: {}, indexOffset: 0, fileSize: size })
+    }
+
+    fs.open(self.filepath, 'r', function (err, fd) {
+      if (err) return cb(err)
+
+      tarUtil.readFinalFile(fd, size, function (err, buf, offset) {
+        if (err) return cb(err)
+        var index
+        try {
+          index = JSON.parse(buf.toString())
+        } catch (e) {
+          return cb(e)
+        }
+        fs.close(fd, function (err) {
+          if (err) return cb(err)
+          cb(null, { index: index, indexOffset: offset, fileSize: size })
+        })
+      })
+    })
+  })
+}
+
+// Returns the entry nearest the end of the index.
+function getFileLargestOffset (index) {
+  var key
+  for (var name in index) {
+    var entry = index[name]
+    if (!key || entry.offset > index[key].offset) key = name
+  }
+  return key
+}
