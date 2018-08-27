@@ -1,12 +1,12 @@
 var fs = require('fs')
 var eos = require('end-of-stream')
 var tar = require('tar-stream')
-var RWLock = require('RWLock')
+var RWLock = require('rwlock')
 var through = require('through2')
 var readonly = require('read-only-stream')
 var fromBuffer = require('./lib/util').fromBuffer
 var cached = require('./lib/cached-value')
-var tarUtil = require('./tar')
+var tarUtil = require('./lib/tar')
 
 module.exports = IndexedTarball
 
