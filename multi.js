@@ -14,6 +14,7 @@ function MultiTarball (filepath, opts) {
 
   this.lock = new RWLock()
 
+  // Find all of the tarballs belonging to the set.
   this._setupTarballs()
 }
 
@@ -25,15 +26,20 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
       cb(err)
     }
 
+    // Find the last tarball in the set.
     self._getLastTarball(function (err, tarball, index) {
       if (err) return done(err)
+
+      // Check if the new file to be added will cause the tarball to exceed its maximum size.
       var totalAddedSize = 2 * 512 + roundUp(size, 512)
       tarball.archive.value(function (err, archive) {
         if (err) return done(err)
         if (archive.fileSize + totalAddedSize > self.maxFileSize) {
+          // Overflow into a brand new tarball
           tarball = new IndexedTarball(self.filepath + '.' + (index + 1))
           self.tarballs.push(tarball)
         }
+
         tarball.append(filepath, readable, size, done)
       })
     })
