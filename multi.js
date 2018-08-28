@@ -1,13 +1,6 @@
 var fs = require('fs')
 var path = require('path')
-var eos = require('end-of-stream')
-var tar = require('tar-stream')
 var RWLock = require('rwlock')
-var through = require('through2')
-var readonly = require('read-only-stream')
-var fromBuffer = require('./lib/util').fromBuffer
-var cached = require('./lib/cached-value')
-var tarUtil = require('./lib/tar')
 var IndexedTarball = require('./single')
 
 module.exports = MultiTarball
@@ -38,7 +31,7 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
       tarball.archive.value(function (err, archive) {
         if (err) return done(err)
         if (archive.fileSize + totalAddedSize > self.maxFileSize) {
-          tarball = new IndexedTarball(self.filepath + '.' + (index+1))
+          tarball = new IndexedTarball(self.filepath + '.' + (index + 1))
           self.tarballs.push(tarball)
         }
         tarball.append(filepath, readable, size, done)
@@ -90,13 +83,14 @@ MultiTarball.prototype._setupTarballs = function (cb) {
 // Returns the final tarball in the set. A new one will be created if it doesn't exist.
 MultiTarball.prototype._getLastTarball = function (cb) {
   cb = cb || noop
+  var tarball
 
   if (!this.tarballs.length) {
-    var tarball = new IndexedTarball(this.filepath)
+    tarball = new IndexedTarball(this.filepath)
     this.tarballs.push(tarball)
     cb(null, tarball, 0)
   } else {
-    var tarball = this.tarballs[this.tarballs.length - 1]
+    tarball = this.tarballs[this.tarballs.length - 1]
     var index = parseIndexFromFilename(tarball.filepath)
     cb(null, tarball, index)
   }
@@ -128,14 +122,4 @@ function parseIndexFromFilename (filename) {
   } else {
     return 0
   }
-}
-
-// thanks https://stackoverflow.com/questions/2593637/how-to-escape-regular-expression-in-javascript#2593661
-function quoteRegex (str) {
-  return (str + '').replace(/[.?*+^$[\]\\(){}|-]/g, '\\$&')
-};
-
-function roundUp (n, nearest) {
-  var more = 512 - (n % nearest)
-  return n + more
 }
