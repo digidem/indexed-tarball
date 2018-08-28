@@ -86,10 +86,11 @@ MultiTarball.prototype.read = function (filepath) {
   var stream = through()
 
   this.lock.readLock(function (release) {
-    self._getLastTarball(function (err, tarball) {
+    self._getFullIndex(function (err, index) {
       if (err) stream.emit('error', err)
+      else if (!index[filepath]) stream.emit('error', new Error('not found'))
       else {
-        pump(tarball.read(filepath), stream, function (err) {
+        pump(index[filepath].tarball.read(filepath), stream, function (err) {
           if (err) stream.emit('error', err)
         })
       }
@@ -119,6 +120,7 @@ MultiTarball.prototype._setupTarballs = function (cb) {
     var dir = path.dirname(self.filepath)
     fs.readdir(dir, function (err, contents) {
       if (err) return done(err)
+      // TODO: test that the sort function is working & these are in order
       self.tarballs = contents
         .filter(function (name) { return parseIndexFromFilename(name) !== null })
         .map(function (name) { return new IndexedTarball(name) })
@@ -142,6 +144,29 @@ MultiTarball.prototype._getLastTarball = function (cb) {
     var index = parseIndexFromFilename(tarball.filepath)
     cb(null, tarball, index)
   }
+}
+
+// Read the index of *all* tarballs to build a full index.
+MultiTarball.prototype._getFullIndex = function (cb) {
+  var self = this
+  var index = {}
+
+  // Process tarballs *in order*. This is necessary to avoid earlier duplicate
+  // filenames overwriting newer ones.
+  ;(function next (idx) {
+    if (idx >= self.tarballs.length) return cb(null, index)
+
+    var tarball = self.tarballs[idx]
+    tarball.archive.value(function (err, _meta) {
+      if (err) return cb(err)
+      var _index = _meta.index
+      for (var key in _index) {
+        index[key] = Object.assign({}, _index[key])
+        index[key].tarball = tarball
+      }
+      next(idx + 1)
+    })
+  })(0)
 }
 
 function noop () {}
