@@ -19,15 +19,14 @@ function MultiTarball (filepath, opts) {
   this.tarballs = []
   this.maxFileSize = opts.maxFileSize || (Math.pow(2, 32) - 1)
 
-  this.loadLock = new RWLock()
+  this.lock = new RWLock()
 
   this._setupTarballs()
 }
 
 MultiTarball.prototype.append = function (filepath, readable, size, cb) {
   var self = this
-  // TODO: do I need a different locking mechanism on APIs that modify self.tarballs?
-  this.loadLock.readLock(function (release) {
+  this.lock.writeLock(function (release) {
     function done (err) {
       release()
       cb(err)
@@ -50,19 +49,19 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
 
 MultiTarball.prototype.list = function (cb) {
   var self = this
-  this.loadLock.readLock(function (release) {
+  this.lock.readLock(function (release) {
   })
 }
 
 MultiTarball.prototype.read = function (filepath) {
   var self = this
-  this.loadLock.readLock(function (release) {
+  this.lock.readLock(function (release) {
   })
 }
 
 MultiTarball.prototype.pop = function (cb) {
   var self = this
-  this.loadLock.readLock(function (release) {
+  this.lock.writeLock(function (release) {
   })
 }
 
@@ -70,7 +69,7 @@ MultiTarball.prototype._setupTarballs = function (cb) {
   var self = this
   cb = cb || noop
 
-  this.loadLock.writeLock(function (release) {
+  this.lock.writeLock(function (release) {
     function done (err) {
       release()
       cb(err)
@@ -90,25 +89,17 @@ MultiTarball.prototype._setupTarballs = function (cb) {
 
 // Returns the final tarball in the set. A new one will be created if it doesn't exist.
 MultiTarball.prototype._getLastTarball = function (cb) {
-  var self = this
   cb = cb || noop
 
-  this.loadLock.readLock(function (release) {
-    function done (err, res, idx) {
-      release()
-      cb(err, res, idx)
-    }
-
-    if (!self.tarballs.length) {
-      var tarball = new IndexedTarball(self.filepath)
-      self.tarballs.push(tarball)
-      done(null, tarball, 0)
-    } else {
-      var tarball = self.tarballs[self.tarballs.length - 1]
-      var index = parseIndexFromFilename(tarball.filepath)
-      done(null, tarball, index)
-    }
-  })
+  if (!this.tarballs.length) {
+    var tarball = new IndexedTarball(this.filepath)
+    this.tarballs.push(tarball)
+    cb(null, tarball, 0)
+  } else {
+    var tarball = this.tarballs[this.tarballs.length - 1]
+    var index = parseIndexFromFilename(tarball.filepath)
+    cb(null, tarball, index)
+  }
 }
 
 function noop () {}
