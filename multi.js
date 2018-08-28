@@ -35,17 +35,14 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
 
     self._getLastTarball(function (err, tarball, index) {
       if (err) return done(err)
-      console.log('glt', tarball.filepath, index)
       var totalAddedSize = 2 * 512 + roundUp(size, 512)
       tarball.archive.value(function (err, archive) {
         if (err) return done(err)
         if (archive.fileSize + totalAddedSize > self.maxFileSize) {
           tarball = new IndexedTarball(self.filepath + '.' + (index+1))
           self.tarballs.push(tarball)
-          tarball.append(filepath, readable, size, done)
-        } else {
-          tarball.append(filepath, readable, size, done)
         }
+        tarball.append(filepath, readable, size, done)
       })
     })
   })
