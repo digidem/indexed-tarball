@@ -51,6 +51,28 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
 MultiTarball.prototype.list = function (cb) {
   var self = this
   this.lock.readLock(function (release) {
+    var error
+    var pending = self.tarballs.length
+    var res = []
+
+    self.tarballs.forEach(list)
+
+    function done (err) {
+      error = err || error
+      pending--
+      if (!pending) {
+        release()
+        cb(error, error ? undefined : res)
+      }
+    }
+
+    function list (tarball) {
+      tarball.list(function (err, files) {
+        if (err) return done(err)
+        res.push.apply(res, files)
+        done()
+      })
+    }
   })
 }
 
