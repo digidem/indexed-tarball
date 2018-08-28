@@ -108,7 +108,9 @@ SingleTarball.prototype.read = function (filepath) {
       var entry = archive.index[filepath]
       if (!entry) {
         release()
-        t.emit('error', new Error('that file does not exist in the archive'))
+        process.nextTick(function () {
+          t.emit('error', new Error('that file does not exist in the archive'))
+        })
         return
       }
 

@@ -1,6 +1,9 @@
 var fs = require('fs')
 var path = require('path')
+var pump = require('pump')
 var RWLock = require('rwlock')
+var through = require('through2')
+var readonly = require('read-only-stream')
 var IndexedTarball = require('./single')
 
 module.exports = MultiTarball
@@ -78,8 +81,21 @@ MultiTarball.prototype.list = function (cb) {
 
 MultiTarball.prototype.read = function (filepath) {
   var self = this
+  var stream = through()
+
   this.lock.readLock(function (release) {
+    self._getLastTarball(function (err, tarball) {
+      if (err) stream.emit('error', err)
+      else {
+        pump(tarball.read(filepath), stream, function (err) {
+          if (err) stream.emit('error', err)
+        })
+      }
+      release()
+    })
   })
+
+  return readonly(stream)
 }
 
 MultiTarball.prototype.pop = function (cb) {
