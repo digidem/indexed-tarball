@@ -123,3 +123,8 @@ function parseIndexFromFilename (filename) {
     return 0
   }
 }
+
+function roundUp (n, nearest) {
+  var more = 512 - (n % nearest)
+  return n + more
+}
