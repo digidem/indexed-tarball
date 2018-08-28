@@ -26,16 +26,27 @@ function MultiTarball (filepath, opts) {
 
 MultiTarball.prototype.append = function (filepath, readable, size, cb) {
   var self = this
+  // TODO: do I need a different locking mechanism on APIs that modify self.tarballs?
   this.loadLock.readLock(function (release) {
     function done (err) {
       release()
       cb(err)
     }
 
-    self._getLastTarball(function (err, tarball) {
+    self._getLastTarball(function (err, tarball, index) {
       if (err) return done(err)
-      // TODO: support case where tarball len + size > opts.maxFileSize
-      tarball.append(filepath, readable, size, done)
+      console.log('glt', tarball.filepath, index)
+      var totalAddedSize = 2 * 512 + roundUp(size, 512)
+      tarball.archive.value(function (err, archive) {
+        if (err) return done(err)
+        if (archive.fileSize + totalAddedSize > self.maxFileSize) {
+          tarball = new IndexedTarball(self.filepath + '.' + (index+1))
+          self.tarballs.push(tarball)
+          tarball.append(filepath, readable, size, done)
+        } else {
+          tarball.append(filepath, readable, size, done)
+        }
+      })
     })
   })
 }
@@ -86,17 +97,19 @@ MultiTarball.prototype._getLastTarball = function (cb) {
   cb = cb || noop
 
   this.loadLock.readLock(function (release) {
-    function done (err, res) {
+    function done (err, res, idx) {
       release()
-      cb(err, res)
+      cb(err, res, idx)
     }
 
     if (!self.tarballs.length) {
       var tarball = new IndexedTarball(self.filepath)
       self.tarballs.push(tarball)
-      done(null, tarball)
+      done(null, tarball, 0)
     } else {
-      done(null, self.tarballs[self.tarballs.length - 1])
+      var tarball = self.tarballs[self.tarballs.length - 1]
+      var index = parseIndexFromFilename(tarball.filepath)
+      done(null, tarball, index)
     }
   })
 }
@@ -133,3 +146,8 @@ function parseIndexFromFilename (filename) {
 function quoteRegex (str) {
   return (str + '').replace(/[.?*+^$[\]\\(){}|-]/g, '\\$&')
 };
+
+function roundUp (n, nearest) {
+  var more = 512 - (n % nearest)
+  return n + more
+}
