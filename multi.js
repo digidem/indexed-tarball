@@ -56,7 +56,7 @@ MultiTarball.prototype.list = function (cb) {
   this.lock.readLock(function (release) {
     var error
     var pending = self.tarballs.length
-    var res = []
+    var res = {}
 
     self.tarballs.forEach(list)
 
@@ -65,14 +65,16 @@ MultiTarball.prototype.list = function (cb) {
       pending--
       if (!pending) {
         release()
-        cb(error, error ? undefined : res)
+        cb(error, error ? undefined : Object.keys(res))
       }
     }
 
     function list (tarball) {
       tarball.list(function (err, files) {
         if (err) return done(err)
-        res.push.apply(res, files)
+        for (var idx in files) {
+          res[files[idx]] = true
+        }
         done()
       })
     }

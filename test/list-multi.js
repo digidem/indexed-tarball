@@ -53,6 +53,35 @@ test('can list files in three archives', function (t) {
   })
 })
 
+test('can list files in three archives with deduplication', function (t) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
+    t.error(err, 'tmpdir setup')
+
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 1024})
+
+    append(tarball, 'first.txt', '1st', function (err) {
+      t.error(err, 'append ok')
+    })
+
+    append(tarball, 'first.txt', '2nd', function (err) {
+      t.error(err, 'append ok')
+    })
+
+    append(tarball, 'first.txt', '3rd', function (err) {
+      t.error(err, 'append ok')
+    })
+
+    tarball.list(function (err, files) {
+      t.error(err, 'list ok')
+      t.deepEquals(files.sort(), ['first.txt'])
+
+      cleanup()
+      t.end()
+    })
+  })
+})
+
 function append (tarball, filename, string, cb) {
   tarball.append(filename, fromString(string), string.length, cb)
 }
