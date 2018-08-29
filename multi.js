@@ -109,8 +109,9 @@ MultiTarball.prototype.pop = function (cb) {
       cb(err)
     }
 
-    self._getLastTarball(function (err, tarball) {
+    self._getLastPopulatedTarball(function (err, tarball) {
       if (err) return done(err)
+      else if (!tarball) return done()
       tarball.pop(done)
     })
   })
@@ -153,6 +154,28 @@ MultiTarball.prototype._getLastTarball = function (cb) {
     var index = parseIndexFromFilename(tarball.filepath)
     cb(null, tarball, index)
   }
+}
+
+// Returns the final *populated* tarball in the set. Returns 'null' if none are
+// populated.
+MultiTarball.prototype._getLastPopulatedTarball = function (cb) {
+  cb = cb || noop
+  var self = this
+  var tarball
+
+  ;(function checkPrevious (idx) {
+    if (idx < 0) return cb(null) // all empty tarballs!
+    tarball = self.tarballs[idx]
+    tarball.archive.value(function (err, meta) {
+      if (err) return cb(err)
+      if (meta && meta.index && Object.keys(meta.index).length > 0) {
+        var index = parseIndexFromFilename(tarball.filepath)
+        cb(null, tarball, index)
+      } else {
+        checkPrevious(idx - 1)
+      }
+    })
+  })(this.tarballs.length - 1)
 }
 
 // Read the index of *all* tarballs to build a full index.
