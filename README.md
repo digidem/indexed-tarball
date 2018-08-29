@@ -7,17 +7,13 @@ A small extension to the [tar archive format](https://en.wikipedia.org/wiki/Tar_
 1. Constant time random access reads
 2. Constant time writes (appends)
 3. Constant time deletions (truncation)
-4. ~~Multi-file support~~ (TODO)
+4. Multi-file support
 
 This is done by generating a special "index file" that is always appended to the end of the tar achive, which maps file paths within the archive to byte offsets.
 
 ## Compatibility
 
 Tarballs created with this module are still plain old tar files, and will work with existing utilities.
-
-## Status
-
-> implemented except multi-file
 
 ## Usage
 
@@ -59,7 +55,7 @@ var Tarball = require('indexed-tarball')
 
 Creates or opens an indexed tarball. These are compatible with regular tarballs, so no special extension or archiving software is needed.
 
-If `opts.multifile` is set, further syncfiles will be searched for an opened as well.
+If `opts.multifile` is set, further tarballs will be searched for an opened as well. If `opts.maxFileSize` is set as well, this will be used to decide when to "overflow" to a new tarball. See the "Multi-file support" section below for more details. Defaults to 4 gigabytes.
 
 ## tarball.append(filepath, readStream, size, cb)
 
@@ -92,7 +88,15 @@ $ npm install indexed-tarball
 
 ## Multi-file support
 
-**TODO**
+### How does it work?
+
+Once a file (e.g. `file.tar`) reaches `opts.maxFileSize` or 4 gigabytes (default), the next file appended will be written to `file.tar.1`. Once it fills, `file.tar.2`, and so forth. Each tarball has its own index file, which are unioned (think set theory) together to allow all files across all tarballs be read and listed without any file scanning.
+
+### Caveats?
+
+If there are multiple files with the same name across the multiple tarballs, the file that comes *latest* in the tarball set wins; the earlier one(s) are ignored. (e.g. if `foo.tar.3` and `foo.tar.7` both contain a file with path `bar/bax/quux.txt`, the one from `foo.tar.7` will always be returned & used.
+
+Also, currently new appends are always made to the *final* tarball in the set. So if you wrote a lot of files and ended up with `file.tar` and `file.tar.1`, and then `pop`d all of the files until none were left, future `append`s would go to `file.tar.1`, not `file.tar`. Fixing this [is a TODO](https://github.com/noffle/indexed-tarball/issues/1).
 
 ## License
 
