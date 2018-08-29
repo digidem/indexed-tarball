@@ -104,6 +104,15 @@ MultiTarball.prototype.read = function (filepath) {
 MultiTarball.prototype.pop = function (cb) {
   var self = this
   this.lock.writeLock(function (release) {
+    function done (err) {
+      release()
+      cb(err)
+    }
+
+    self._getLastTarball(function (err, tarball) {
+      if (err) return done(err)
+      tarball.pop(done)
+    })
   })
 }
 
