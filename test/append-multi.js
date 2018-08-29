@@ -81,7 +81,7 @@ test('second append overflows into second tarball', function (t) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
-    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 2048})
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
     tarball.append('hello.txt', fromString(data), data.length, function (err) {
       t.error(err, 'append ok')
@@ -227,5 +227,59 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
         })
       })
     }
+  })
+})
+
+test('can append to the 1st file of an empty two-file archive', function (t) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
+    t.error(err, 'tmpdir setup')
+
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
+    var data = 'greetings friend!'
+    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+      t.error(err, 'append ok')
+    })
+
+    data = '# beep boop'
+    tarball.append('beep.md', fromString(data), data.length, function (err) {
+      t.error(err, 'append ok')
+    })
+
+    tarball.pop(function (err) {
+      t.error(err, 'pop ok')
+
+      tarball.pop(function (err) {
+        t.error(err, 'pop ok')
+
+        tarball.append('foo/bax.js', fromString(data), data.length, function (err) {
+          t.error(err, 'append ok')
+
+          parseTarball(filepath, function (err, res) {
+            t.error(err, 'parsed tarball ok')
+            t.equals(res.length, 1, '1 entry')
+            t.equals(res[0].name, '___index.json', 'contents match')
+            t.equals(res[0].type, 'file', 'type matches')
+            var index = JSON.parse(res[0].data.toString())
+            t.deepEquals(index, {})
+
+            parseTarball(filepath + '.1', function (err, res) {
+              t.error(err, 'parsed tarball ok')
+              t.equals(res.length, 2, '2 entries')
+              t.equals(res[0].name, 'foo/bax.js', 'name matches')
+              t.equals(res[0].type, 'file', 'type matches')
+              t.equals(res[0].data.toString(), '# beep boop', 'content matches')
+              t.equals(res[1].name, '___index.json', 'contents match')
+              t.equals(res[1].type, 'file', 'type matches')
+              var index = JSON.parse(res[1].data.toString())
+              t.deepEquals(index, { 'foo/bax.js': { offset: 0, size: 11 } })
+
+              cleanup()
+              t.end()
+            })
+          })
+        })
+      })
+    })
   })
 })

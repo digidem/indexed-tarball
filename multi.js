@@ -33,7 +33,8 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
     self._getLastTarball(function (err, tarball, index) {
       if (err) return done(err)
 
-      // Check if the new file to be added will cause the tarball to exceed its maximum size.
+      // Check if the new file to be added will cause the tarball to exceed its
+      // maximum size.
       tarball.archive.value(function (err, archive) {
         if (err) return done(err)
         var totalAddedSize = 512 + roundUp(size, 512)

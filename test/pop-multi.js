@@ -81,7 +81,7 @@ test('can pop the last file in the 2nd archive of a multi-file archive', functio
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
-    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 2048})
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
     tarball.append('hello.txt', fromString(data), data.length, function (err) {
       t.error(err, 'append ok')
@@ -129,7 +129,7 @@ test('can pop the file in the 1st archive of a multi-file archive', function (t)
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
-    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 2048})
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
     tarball.append('hello.txt', fromString(data), data.length, function (err) {
       t.error(err, 'append ok')

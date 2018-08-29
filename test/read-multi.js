@@ -84,7 +84,7 @@ test('can read all files in an archive with many files', function (t) {
     t.error(err, 'tmpdir setup')
 
     var filepath = path.join(dir, 'file.tar')
-    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 2048})
+    var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
 
     var n = 0
     for (var i = 0; i < 100; i++) {
