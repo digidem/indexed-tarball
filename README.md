@@ -64,7 +64,8 @@ Writes the contents of the readable stream `readStream` of byte length `size` to
 ## var rs = tarball.read(filepath)
 
 Returns a readable stream of the data within the archive named by `filepath`. If
-the file doesn't exist in the archive, the stream `rs` will emit an error.
+the file doesn't exist in the archive, the stream `rs` will emit an error `err`
+with `err.notFound` set to `true`.
 
 ## tarball.pop(cb)
 
