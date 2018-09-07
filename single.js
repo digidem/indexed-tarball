@@ -4,6 +4,7 @@ var tar = require('tar-stream')
 var RWLock = require('rwlock')
 var through = require('through2')
 var readonly = require('read-only-stream')
+var pump = require('pump')
 var fromBuffer = require('./lib/util').fromBuffer
 var cached = require('./lib/cached-value')
 var tarUtil = require('./lib/tar')
@@ -116,8 +117,12 @@ SingleTarball.prototype.read = function (filepath) {
         return
       }
 
-      fs.createReadStream(self.filepath, { start: entry.offset + 512, end: entry.offset + 512 + entry.size - 1 })
-        .pipe(t)
+      pump(
+        fs.createReadStream(self.filepath, { start: entry.offset + 512, end: entry.offset + 512 + entry.size - 1 }),
+        t,
+        function (err) {
+          release()
+        })
     })
   })
 
