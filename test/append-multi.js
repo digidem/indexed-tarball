@@ -5,8 +5,6 @@ var test = require('tape')
 var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
 
-return
-
 test('can append to a new file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
@@ -14,7 +12,7 @@ test('can append to a new file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true})
     var data = 'greetings friend!'
-    fromString(data).pipe(tarball.append('hello.txt', function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
 
       parseTarball(filepath, function (err, res) {
@@ -38,8 +36,6 @@ test('can append to a new file', function (t) {
   })
 })
 
-return
-
 test('can append to an existing file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
@@ -47,11 +43,11 @@ test('can append to an existing file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
 
       data = '# beep boop'
-      tarball.append('beep.md', fromString(data), data.length, function (err) {
+      fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
         t.error(err, 'append ok')
 
         parseTarball(filepath, function (err, res) {
@@ -75,8 +71,8 @@ test('can append to an existing file', function (t) {
           cleanup()
           t.end()
         })
-      })
-    })
+      }))
+    }))
   })
 })
 
@@ -87,11 +83,11 @@ test('second append overflows into second tarball', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
 
       data = '# beep boop'
-      tarball.append('beep.md', fromString(data), data.length, function (err) {
+      fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
         t.error(err, 'append ok')
 
         parseTarball(filepath, function (err, res) {
@@ -120,8 +116,8 @@ test('second append overflows into second tarball', function (t) {
             t.end()
           })
         })
-      })
-    })
+      }))
+    }))
   })
 })
 
@@ -134,16 +130,16 @@ test('two concurrent writes succeed as expected', function (t) {
     var pending = 2
 
     var data1 = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data1), data1.length, function (err) {
+    fromString(data1).pipe(tarball.append('hello.txt', data1.length, function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     var data2 = '# beep boop'
-    tarball.append('beep.md', fromString(data2), data2.length, function (err) {
+    fromString(data2).pipe(tarball.append('beep.md', data2.length, function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     function check () {
       parseTarball(filepath, function (err, res) {
@@ -180,22 +176,22 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
     var pending = 3
 
     var data1 = Buffer.alloc(600).fill('t').toString()
-    tarball.append('hello.txt', fromString(data1), data1.length, function (err) {
+    fromString(data1).pipe(tarball.append('hello.txt', data1.length, function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     var data2 = '# beep boop'
-    tarball.append('beep.md', fromString(data2), data2.length, function (err) {
+    fromString(data2).pipe(tarball.append('beep.md', data2.length, function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     var data3 = '# deep doop'
-    tarball.append('deep.md', fromString(data3), data3.length, function (err) {
+    fromString(data3).pipe(tarball.append('deep.md', data3.length, function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     function check () {
       // 1st tarball
@@ -240,15 +236,16 @@ test('can append to the 1st file of an empty two-file archive', function (t) {
 
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
-    var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
-      t.error(err, 'append ok')
-    })
 
-    data = '# beep boop'
-    tarball.append('beep.md', fromString(data), data.length, function (err) {
+    var data = 'greetings friend!'
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
+
+    var data2 = '# beep boop'
+    fromString(data2).pipe(tarball.append('beep.md', data2.length, function (err) {
+      t.error(err, 'append ok')
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
@@ -256,7 +253,7 @@ test('can append to the 1st file of an empty two-file archive', function (t) {
       tarball.pop(function (err) {
         t.error(err, 'pop ok')
 
-        tarball.append('foo/bax.js', fromString(data), data.length, function (err) {
+        fromString(data2).pipe(tarball.append('foo/bax.js', data2.length, function (err) {
           t.error(err, 'append ok')
 
           parseTarball(filepath, function (err, res) {
@@ -282,7 +279,7 @@ test('can append to the 1st file of an empty two-file archive', function (t) {
               t.end()
             })
           })
-        })
+        }))
       })
     })
   })

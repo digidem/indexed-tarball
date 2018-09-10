@@ -4,8 +4,6 @@ var tmp = require('tmp')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
 
-return
-
 test('can list an archive with one file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
@@ -85,5 +83,5 @@ test('can list files in three archives with deduplication', function (t) {
 })
 
 function append (tarball, filename, string, cb) {
-  tarball.append(filename, fromString(string), string.length, cb)
+  fromString(string).pipe(tarball.append(filename, string.length, cb))
 }

@@ -5,8 +5,6 @@ var test = require('tape')
 var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
 
-return
-
 test('can pop an archive with two files', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
@@ -14,14 +12,14 @@ test('can pop an archive with two files', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 512 * 100})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     data = '# beep boop'
-    tarball.append('beep.md', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
@@ -54,9 +52,9 @@ test('can pop an archive with one file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 512 * 10})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
@@ -85,14 +83,14 @@ test('can pop the last file in the 2nd archive of a multi-file archive', functio
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     data = '# beep boop'
-    tarball.append('beep.md', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
@@ -133,14 +131,14 @@ test('can pop the file in the 1st archive of a multi-file archive', function (t)
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 3072})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     data = '# beep boop'
-    tarball.append('beep.md', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')

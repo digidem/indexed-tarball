@@ -5,8 +5,6 @@ var tmp = require('tmp')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
 
-return
-
 test('can read an archive with one file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')
@@ -14,7 +12,7 @@ test('can read an archive with one file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath, {multifile: true})
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
 
       collect(tarball.read('hello.txt'), function (err, data) {
@@ -24,7 +22,7 @@ test('can read an archive with one file', function (t) {
         cleanup()
         t.end()
       })
-    })
+    }))
   })
 })
 
@@ -51,14 +49,14 @@ test('can two files across two archives', function (t) {
     var tarball = new Tarball(filepath, {multifile: true, maxFileSize: 1024})
 
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     data = 'how about a nice game of chess'
-    tarball.append('games/chess', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('games/chess', data.length, function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     collect(tarball.read('hello.txt'), function (err, data) {
       t.error(err, 'read ok')
@@ -92,9 +90,9 @@ test('can read all files in an archive with many files', function (t) {
     for (var i = 0; i < 100; i++) {
       n++
       var data = 'this is message #' + i
-      tarball.append('hello_' + i + '.txt', fromString(data), data.length, function (err) {
+      fromString(data).pipe(tarball.append('hello_' + i + '.txt', data.length, function (err) {
         t.error(err, 'append ok')
-      })
+      }))
     }
 
     for (var i = 0; i < n; i++) {

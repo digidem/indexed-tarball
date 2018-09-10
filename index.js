@@ -14,8 +14,8 @@ function IndexedTarball (filepath, opts) {
   this.impl = impl
 }
 
-IndexedTarball.prototype.append = function (filepath, cb) {
-  return this.impl.append(filepath, cb)
+IndexedTarball.prototype.append = function (filepath, size, cb) {
+  return this.impl.append(filepath, size, cb)
 }
 
 IndexedTarball.prototype.list = function (cb) {

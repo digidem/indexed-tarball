@@ -21,8 +21,15 @@ function MultiTarball (filepath, opts) {
   this._setupTarballs()
 }
 
-MultiTarball.prototype.append = function (filepath, readable, size, cb) {
+MultiTarball.prototype.append = function (filepath, size, cb) {
+  if (!cb && typeof size === 'function') {
+    cb = size
+    size = null
+  }
   var self = this
+
+  var t = through()
+
   this.lock.writeLock(function (release) {
     function done (err) {
       release()
@@ -46,10 +53,13 @@ MultiTarball.prototype.append = function (filepath, readable, size, cb) {
           self.tarballs.push(tarball)
         }
 
-        tarball.append(filepath, readable, size, done)
+        var ws = tarball.append(filepath, done)
+        t.pipe(ws)
       })
     })
   })
+
+  return t
 }
 
 MultiTarball.prototype.list = function (cb) {

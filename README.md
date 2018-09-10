@@ -60,9 +60,15 @@ Creates or opens an indexed tarball. These are compatible with regular tarballs,
 
 If `opts.multifile` is set, further tarballs will be searched for an opened as well. If `opts.maxFileSize` is set as well, this will be used to decide when to "overflow" to a new tarball. See the "Multi-file support" section below for more details. Defaults to 4 gigabytes.
 
-## var ws = tarball.append(filepath, cb)
+## var ws = tarball.append(filepath[, size], cb)
 
 Returns a writable stream that will be appended to the end of the tarball.
+
+A `size` of the file may be included, if it is already known. This is used in
+the multi-tarball case to anticipate when the file will become too large for
+the filesystem and split it into a new tarball *before* writing. If omitted and
+the appended file goes over the maximum file size for the filesystem, the
+operation will fail and may result in corruption.
 
 `cb` is called when the write has been completely persisted to disk.
 

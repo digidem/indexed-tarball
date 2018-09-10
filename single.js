@@ -25,10 +25,15 @@ function SingleTarball (filepath, opts) {
 }
 
 // Append a file and update the index entry.
-SingleTarball.prototype.append = function (filepath, cb) {
+SingleTarball.prototype.append = function (filepath, size, cb) {
+  if (!cb && typeof size === 'function') {
+    cb = size
+    size = null
+  }
+  size = 0
+
   var self = this
   cb = cb || noop
-  var size = 0
 
   var t = through(function (chunk, _, next) {
     size += chunk.length
