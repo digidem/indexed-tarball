@@ -83,17 +83,14 @@ SingleTarball.prototype.append = function (filepath, cb) {
       // 5. Write data.
       t.pipe(appendStream)
       t.on('end', function () {
-        console.log('done writing')
-
         // 6. Pad the remaining bytes to fit a 512-byte block.
         var leftover = 512 - (size % 512)
-        console.log('leftover padding', leftover)
         fs.appendFile(self.filepath, Buffer.alloc(leftover), function (err) {
           // TODO: file left in a bad state! D:
           if (err) return done(err)
 
           // 7. Open file so we can update the header.
-          fs.open(self.filepath, 'r+', function (err, fd) {
+          withWritableFile(self.filepath, function (fd, done) {
             // TODO: file left in a bad state! D:
             if (err) return done(err)
 
@@ -107,13 +104,11 @@ SingleTarball.prototype.append = function (filepath, cb) {
               // 9. Update size field.
               var sizeStr = toPaddedOctal(size, 12)
               header.write(sizeStr, 124, 12, 'utf8')
-              console.log('sbuf', sizeStr)
 
               // 10. Update checksum field.
               var sum = cksum(header)
               var ck = toPaddedOctal(sum, 8)
               header.write(ck, 148, 8, 'utf8')
-              console.log('ckbuf', sum, sum.toString(), ck)
 
               // 11. Write new header.
               fs.write(fd, header, 0, 512, headerStart, function (err) {
@@ -123,14 +118,14 @@ SingleTarball.prototype.append = function (filepath, cb) {
                 archive.index[filepath] = { offset: start, size: size }
 
                 // 12. Write the new index to the end of the archive.
-                appendIndex(fd, headerStart + 512 + size + leftover, archive.index, function (err) {
-                  // TODO: file left in a bad state! D:
-                  if (err) return done(err)
-
-                  self.archive.refresh(done)
-                })
+                appendIndex(fd, headerStart + 512 + size + leftover, archive.index, done)
               })
             })
+          }, function (err) {
+            // TODO: file left in a bad state! D:
+            if (err) return done(err)
+
+            self.archive.refresh(done)
           })
         })
       })
@@ -209,7 +204,9 @@ SingleTarball.prototype.pop = function (cb) {
         if (err) return done(err)
         delete archive.index[name]
 
-        self._writeNewIndex(archive.index, offset, function (err) {
+        withWritableFile(self.filepath, function (fd, done) {
+          appendIndex(fd, offset, archive.index, done)
+        }, function (err) {
           if (err) return done(err)
           self.archive.refresh(done)
         })
@@ -218,43 +215,7 @@ SingleTarball.prototype.pop = function (cb) {
   })
 }
 
-SingleTarball.prototype._writeNewIndex = function (newIndex, offset, cb) {
-  var self = this
-
-  // 1. Truncate at offset.
-  fs.truncate(this.filepath, offset, function (err) {
-    if (err) return cb(err)
-
-    // 2. Prepare the tar archive for appending.
-    var fsOpts = {
-      flags: 'r+',
-      start: offset
-    }
-    var appendStream = fs.createWriteStream(self.filepath, fsOpts)
-
-    var pack = tar.pack()
-
-    // 3. Write the new index to the end of the archive.
-    self._packIndex(pack, newIndex, function (err) {
-      if (err) return cb(err)
-      pack.finalize()
-    })
-
-    // 4. Do the writes & cleanup.
-    eos(pack.pipe(appendStream), cb)
-  })
-}
-
-// Write the index file (JSON) to the tar pack stream.
-SingleTarball.prototype._packIndex = function (pack, newIndex, cb) {
-  var indexData = Buffer.from(JSON.stringify(newIndex), 'utf8')
-  fromBuffer(indexData).pipe(
-    pack.entry({ name: '___index.json', size: indexData.length }, cb)
-  )
-}
-
 // Search the tar archive backwards for the index file.
-// TODO: won't this break if the index grows larger than 512 bytes? (write test!)
 SingleTarball.prototype._lookupIndex = function (cb) {
   var self = this
 
@@ -335,3 +296,11 @@ function appendIndex (fd, pos, index, cb) {
   fs.write(fd, buf, 0, buf.length, pos, cb)
 }
 
+function withWritableFile (filepath, cb, done) {
+  fs.open(filepath, 'r+', function (err, fd) {
+    if (err) return cb(err)
+    cb(fd, function () {
+      fs.close(fd, done)
+    })
+  })
+}
