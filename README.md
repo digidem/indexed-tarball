@@ -78,9 +78,11 @@ Returns a readable stream of the data within the archive named by `filepath`. If
 the file doesn't exist in the archive, the stream `rs` will emit an error `err`
 with `err.notFound` set to `true`.
 
-## tarball.pop(cb)
+## tarball.pop([filepath, ]cb)
 
 Truncates the syncfile such that the last file of the archive is dropped. `cb` is called once the change is persisted to disk.
+
+A `filepath` can optionally be passed in, which will cause an error to be returned if the to-be-popped file does not match `filepath`, as a sanity check.
 
 ## var rs = tarball.read(filepath)
 

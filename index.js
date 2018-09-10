@@ -26,6 +26,6 @@ IndexedTarball.prototype.read = function (filepath) {
   return this.impl.read(filepath)
 }
 
-IndexedTarball.prototype.pop = function (cb) {
-  this.impl.pop(cb)
+IndexedTarball.prototype.pop = function (name, cb) {
+  this.impl.pop(name, cb)
 }

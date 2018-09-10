@@ -189,7 +189,11 @@ SingleTarball.prototype.read = function (filepath) {
 // TODO: might be nice if this also returned the final file, but we don't want
 // to buffer the entire contents, and can't really stream it if it's being
 // truncated from the archive file..
-SingleTarball.prototype.pop = function (cb) {
+SingleTarball.prototype.pop = function (name, cb) {
+  if (typeof name === 'function' && !cb) {
+    cb = name
+    name = null
+  }
   var self = this
 
   this.lock.writeLock(function (release) {
@@ -202,12 +206,15 @@ SingleTarball.prototype.pop = function (cb) {
       if (err) return done(err)
 
       // Get the last file in the archive.
-      var name = getFileLargestOffset(archive.index)
-      var offset = archive.index[name].offset
+      var fname = getFileLargestOffset(archive.index)
+      if (name && name !== fname) {
+        return cb(null, new Error('the last file doesnt match the filename given'))
+      }
+      var offset = archive.index[fname].offset
 
       fs.truncate(self.filepath, offset, function (err) {
         if (err) return done(err)
-        delete archive.index[name]
+        delete archive.index[fname]
 
         withWritableFile(self.filepath, function (fd, done) {
           appendIndex(fd, offset, archive.index, done)
