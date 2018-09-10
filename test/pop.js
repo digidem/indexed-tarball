@@ -12,14 +12,14 @@ test('can pop an archive with two files', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     data = '# beep boop'
-    tarball.append('beep.md', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('beep.md', function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
@@ -52,9 +52,9 @@ test('can pop an archive with one file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.pop(function (err) {
       t.error(err, 'pop ok')

@@ -12,7 +12,7 @@ test('can append to a new file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
 
       parseTarball(filepath, function (err, res) {
@@ -32,7 +32,7 @@ test('can append to a new file', function (t) {
         cleanup()
         t.end()
       })
-    })
+    }))
   })
 })
 
@@ -43,11 +43,11 @@ test('can append to an existing file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
 
       data = '# beep boop'
-      tarball.append('beep.md', fromString(data), data.length, function (err) {
+      fromString(data).pipe(tarball.append('beep.md', function (err) {
         t.error(err, 'append ok')
 
         parseTarball(filepath, function (err, res) {
@@ -71,8 +71,8 @@ test('can append to an existing file', function (t) {
           cleanup()
           t.end()
         })
-      })
-    })
+      }))
+    }))
   })
 })
 
@@ -85,16 +85,16 @@ test('two concurrent writes succeed as expected', function (t) {
     var pending = 2
 
     var data1 = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data1), data1.length, function (err) {
+    fromString(data1).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     var data2 = '# beep boop'
-    tarball.append('beep.md', fromString(data2), data2.length, function (err) {
+    fromString(data2).pipe(tarball.append('beep.md', function (err) {
       t.error(err, 'append ok')
       if (!--pending) check()
-    })
+    }))
 
     function check () {
       parseTarball(filepath, function (err, res) {

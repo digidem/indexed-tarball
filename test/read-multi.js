@@ -5,6 +5,8 @@ var tmp = require('tmp')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
 
+return
+
 test('can read an archive with one file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
     t.error(err, 'tmpdir setup')

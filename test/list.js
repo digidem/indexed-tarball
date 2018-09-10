@@ -11,7 +11,7 @@ test('can list an archive with one file', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
 
       tarball.list(function (err, files) {
@@ -21,7 +21,7 @@ test('can list an archive with one file', function (t) {
         cleanup()
         t.end()
       })
-    })
+    }))
   })
 })
 
@@ -32,9 +32,9 @@ test('can list an archive with one file (concurrent)', function (t) {
     var filepath = path.join(dir, 'file.tar')
     var tarball = new Tarball(filepath)
     var data = 'greetings friend!'
-    tarball.append('hello.txt', fromString(data), data.length, function (err) {
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
-    })
+    }))
 
     tarball.list(function (err, files) {
       t.error(err, 'list ok')
@@ -57,9 +57,9 @@ test('can list an archive with many files (concurrent)', function (t) {
     for (var i = 0; i < 100; i++) {
       n++
       var data = 'this is message #' + i
-      tarball.append('hello_' + i + '.txt', fromString(data), data.length, function (err) {
+      fromString(data).pipe(tarball.append('hello_' + i + '.txt', function (err) {
         t.error(err, 'append ok')
-      })
+      }))
     }
 
     tarball.list(function (err, files) {

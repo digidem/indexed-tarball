@@ -5,6 +5,8 @@ var RWLock = require('rwlock')
 var through = require('through2')
 var readonly = require('read-only-stream')
 var pump = require('pump')
+var through = require('through2')
+var tarHeader = require('tar-stream/headers')
 var fromBuffer = require('./lib/util').fromBuffer
 var cached = require('./lib/cached-value')
 var tarUtil = require('./lib/tar')
@@ -23,8 +25,15 @@ function SingleTarball (filepath, opts) {
 }
 
 // Append a file and update the index entry.
-SingleTarball.prototype.append = function (filepath, readable, size, cb) {
+SingleTarball.prototype.append = function (filepath, cb) {
   var self = this
+  cb = cb || noop
+  var size = 0
+
+  var t = through(function (chunk, _, next) {
+    size += chunk.length
+    next(null, chunk)
+  })
 
   this.lock.writeLock(function (release) {
     function done (err) {
@@ -56,31 +65,79 @@ SingleTarball.prototype.append = function (filepath, readable, size, cb) {
       if (fsOpts.start < 0) fsOpts.start = 0
       var appendStream = fs.createWriteStream(self.filepath, fsOpts)
 
-      var pack = tar.pack()
+      // 4. Write tar header, without size info (yet).
+      var header = tarHeader.encode({
+        name: filepath,
+        type: 'file',
+        mode: parseInt('644', 8),
+        uid: 0,
+        gid: 0,
+        mtime: new Date(),
+        size: 0
+      })
+      appendStream.write(header)
 
-      // 4. Append the new file & index.
-      readable.pipe(
-        pack.entry({ name: filepath, size: size }, function (err) {
+      // byte offset of size field
+      var sizePos = (fsOpts.start || 0) + 124
+
+      // 5. Write data.
+      t.pipe(appendStream)
+      t.on('end', function () {
+        console.log('done writing')
+
+        // 6. Pad the remaining bytes to fit a 512-byte block.
+        var leftover = 512 - (size % 512)
+        console.log('leftover padding', leftover)
+        fs.appendFile(self.filepath, Buffer.alloc(leftover), function (err) {
+          // TODO: file left in a bad state! D:
           if (err) return done(err)
 
-          archive.index[filepath] = { offset: start, size: size }
-
-          // Write the new index to the end of the archive.
-          self._packIndex(pack, archive.index, function (err) {
+          // 7. Open file so we can update the header.
+          fs.open(self.filepath, 'r+', function (err, fd) {
+            // TODO: file left in a bad state! D:
             if (err) return done(err)
-            pack.finalize()
+
+            // 8. Read header.
+            var header = Buffer.alloc(512)
+            var headerStart = fsOpts.start || 0
+            fs.read(fd, header, 0, 512, headerStart, function (err) {
+              // TODO: file left in a bad state! D:
+              if (err) return done(err)
+
+              // 9. Update size field.
+              var sizeStr = toPaddedOctal(size, 12)
+              header.write(sizeStr, 124, 12, 'utf8')
+              console.log('sbuf', sizeStr)
+
+              // 10. Update checksum field.
+              var sum = cksum(header)
+              var ck = toPaddedOctal(sum, 8)
+              header.write(ck, 148, 8, 'utf8')
+              console.log('ckbuf', sum, sum.toString(), ck)
+
+              // 11. Write new header.
+              fs.write(fd, header, 0, 512, headerStart, function (err) {
+                // TODO: file left in a bad state! D:
+                if (err) return done(err)
+
+                archive.index[filepath] = { offset: start, size: size }
+
+                // 12. Write the new index to the end of the archive.
+                appendIndex(fd, headerStart + 512 + size + leftover, archive.index, function (err) {
+                  // TODO: file left in a bad state! D:
+                  if (err) return done(err)
+
+                  self.archive.refresh(done)
+                })
+              })
+            })
           })
-        }))
-
-      // 5. Do the writes & cleanup.
-      eos(pack.pipe(appendStream), function (err) {
-        if (err) return done(err)
-
-        // Refresh the archive info in memory
-        self.archive.refresh(done)
+        })
       })
     }
   })
+
+  return t
 }
 
 SingleTarball.prototype.list = function (cb) {
@@ -239,3 +296,42 @@ function getFileLargestOffset (index) {
   }
   return key
 }
+
+function noop () {}
+
+// tar checksum algorithm (from mafintosh/tar-stream)
+var cksum = function (block) {
+  var sum = 8 * 32
+  for (var i = 0; i < 148; i++) sum += block[i]
+  for (var j = 156; j < 512; j++) sum += block[j]
+  return sum
+}
+
+function toPaddedOctal (number, length) {
+  var octal = number.toString(8)
+  var leftover = length - octal.length
+  var padding = new Array(leftover).fill('0').join('')
+  return padding + octal
+}
+
+function appendIndex (fd, pos, index, cb) {
+  var data = Buffer.from(JSON.stringify(index), 'utf8')
+
+  var header = tarHeader.encode({
+    name: '___index.json',
+    type: 'file',
+    mode: parseInt('644', 8),
+    uid: 0,
+    gid: 0,
+    mtime: new Date(),
+    size: data.length
+  })
+
+  // leftover bytes to reach 512 block boundary, plus another 512 * 2 = 1024 to mark the end-of-file
+  var padding = Buffer.alloc(512 - (data.length % 512) + 512 + 512).fill(0)
+
+  var buf = Buffer.concat([header, data, padding])
+
+  fs.write(fd, buf, 0, buf.length, pos, cb)
+}
+

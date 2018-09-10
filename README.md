@@ -24,9 +24,12 @@ var through = require('through2')
 var tarball = new Tarball('file.tar')
 
 var t = through()
+var ws = tarball.append('hello.txt', done)
+
+t.pipe(ws)
 t.end('hello world')
 
-tarball.append('hello.txt', t, 11, function () {
+function done ()
   tarball.list(function (err, files) {
     console.log('files', files)
 
@@ -57,9 +60,11 @@ Creates or opens an indexed tarball. These are compatible with regular tarballs,
 
 If `opts.multifile` is set, further tarballs will be searched for an opened as well. If `opts.maxFileSize` is set as well, this will be used to decide when to "overflow" to a new tarball. See the "Multi-file support" section below for more details. Defaults to 4 gigabytes.
 
-## tarball.append(filepath, readStream, size, cb)
+## var ws = tarball.append(filepath, cb)
 
-Writes the contents of the readable stream `readStream` of byte length `size` to the archive under the path `filepath`. `cb` is called when the write has been persisted to disk.
+Returns a writable stream that will be appended to the end of the tarball.
+
+`cb` is called when the write has been completely persisted to disk.
 
 ## var rs = tarball.read(filepath)
 
