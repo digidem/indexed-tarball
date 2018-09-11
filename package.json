@@ -15,8 +15,6 @@
   },
   "keywords": [],
   "dependencies": {
-    "collect-stream": "^1.2.1",
-    "end-of-stream": "^1.4.1",
     "pump": "^3.0.0",
     "read-only-stream": "^2.0.0",
     "rwlock": "^5.0.0",
@@ -25,6 +23,7 @@
     "tmp": "0.0.33"
   },
   "devDependencies": {
+    "collect-stream": "^1.2.1",
     "tape": "~4.6.2",
     "standard": "~10.0.0"
   },
