@@ -15,7 +15,7 @@ test('can append to a new file', function (t) {
     fromString(data).pipe(tarball.append('hello.txt', data.length, function (err) {
       t.error(err, 'append ok')
 
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 2, 'two entries')
@@ -26,7 +26,6 @@ test('can append to a new file', function (t) {
 
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        var index = JSON.parse(res[1].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: data.length } })
 
         cleanup()
@@ -50,7 +49,7 @@ test('can append to an existing file', function (t) {
       fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
         t.error(err, 'append ok')
 
-        parseTarball(filepath, function (err, res) {
+        parseTarball(filepath, function (err, res, index) {
           t.error(err, 'parsed tarball ok')
 
           t.equals(res.length, 3, '3 entries')
@@ -65,7 +64,6 @@ test('can append to an existing file', function (t) {
 
           t.equals(res[2].name, '___index.json', 'contents match')
           t.equals(res[2].type, 'file', 'type matches')
-          var index = JSON.parse(res[2].data.toString())
           t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
           cleanup()
@@ -90,7 +88,7 @@ test('second append overflows into second tarball', function (t) {
       fromString(data).pipe(tarball.append('beep.md', data.length, function (err) {
         t.error(err, 'append ok')
 
-        parseTarball(filepath, function (err, res) {
+        parseTarball(filepath, function (err, res, index) {
           t.error(err, 'parsed tarball ok')
           t.equals(res.length, 2, '2 entries')
           t.equals(res[0].name, 'hello.txt', 'name matches')
@@ -98,10 +96,9 @@ test('second append overflows into second tarball', function (t) {
           t.equals(res[0].data.toString(), 'greetings friend!', 'content matches')
           t.equals(res[1].name, '___index.json', 'contents match')
           t.equals(res[1].type, 'file', 'type matches')
-          var index = JSON.parse(res[1].data.toString())
           t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 } })
 
-          parseTarball(filepath + '.1', function (err, res) {
+          parseTarball(filepath + '.1', function (err, res, index) {
             t.error(err, 'parsed tarball ok')
             t.equals(res.length, 2, '2 entries')
             t.equals(res[0].name, 'beep.md', 'name matches')
@@ -109,7 +106,6 @@ test('second append overflows into second tarball', function (t) {
             t.equals(res[0].data.toString(), '# beep boop', 'content matches')
             t.equals(res[1].name, '___index.json', 'contents match')
             t.equals(res[1].type, 'file', 'type matches')
-            var index = JSON.parse(res[1].data.toString())
             t.deepEquals(index, { 'beep.md': { offset: 0, size: 11 } })
 
             cleanup()
@@ -142,7 +138,7 @@ test('two concurrent writes succeed as expected', function (t) {
     }))
 
     function check () {
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 3, '3 entries')
@@ -157,7 +153,6 @@ test('two concurrent writes succeed as expected', function (t) {
 
         t.equals(res[2].name, '___index.json', 'contents match')
         t.equals(res[2].type, 'file', 'type matches')
-        var index = JSON.parse(res[2].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
         cleanup()
@@ -195,7 +190,7 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
 
     function check () {
       // 1st tarball
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed 1st tarball ok')
         t.equals(res.length, 2, '2 entries')
         t.equals(res[0].name, 'hello.txt', 'name matches')
@@ -203,11 +198,10 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
         t.equals(res[0].data.toString(), data1, 'content matches')
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        var index = JSON.parse(res[1].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 600 } })
 
         // 2nd tarball
-        parseTarball(filepath + '.1', function (err, res) {
+        parseTarball(filepath + '.1', function (err, res, index) {
           t.error(err, 'parsed 2nd tarball ok')
           t.equals(res.length, 3, '3 entries')
           t.equals(res[0].name, 'beep.md', 'name matches')
@@ -216,7 +210,6 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
           t.equals(res[1].name, 'deep.md', 'name matches')
           t.equals(res[1].type, 'file', 'type matches')
           t.equals(res[1].data.toString(), '# deep doop', 'content matches')
-          var index = JSON.parse(res[2].data.toString())
           t.deepEquals(index, {
             'beep.md': { offset: 0, size: 11 },
             'deep.md': { offset: 1024, size: 11 }
@@ -256,15 +249,14 @@ test('can append to the 1st file of an empty two-file archive', function (t) {
         fromString(data2).pipe(tarball.append('foo/bax.js', data2.length, function (err) {
           t.error(err, 'append ok')
 
-          parseTarball(filepath, function (err, res) {
+          parseTarball(filepath, function (err, res, index) {
             t.error(err, 'parsed tarball ok')
             t.equals(res.length, 1, '1 entry')
             t.equals(res[0].name, '___index.json', 'contents match')
             t.equals(res[0].type, 'file', 'type matches')
-            var index = JSON.parse(res[0].data.toString())
             t.deepEquals(index, {})
 
-            parseTarball(filepath + '.1', function (err, res) {
+            parseTarball(filepath + '.1', function (err, res, index) {
               t.error(err, 'parsed tarball ok')
               t.equals(res.length, 2, '2 entries')
               t.equals(res[0].name, 'foo/bax.js', 'name matches')
@@ -272,7 +264,6 @@ test('can append to the 1st file of an empty two-file archive', function (t) {
               t.equals(res[0].data.toString(), '# beep boop', 'content matches')
               t.equals(res[1].name, '___index.json', 'contents match')
               t.equals(res[1].type, 'file', 'type matches')
-              var index = JSON.parse(res[1].data.toString())
               t.deepEquals(index, { 'foo/bax.js': { offset: 0, size: 11 } })
 
               cleanup()

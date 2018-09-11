@@ -17,7 +17,7 @@ function SingleTarball (filepath, opts) {
 
   if (!fs.existsSync(filepath)) fs.writeFileSync(filepath, '', 'utf8') // touch new file
 
-  this.archive = cached(SingleTarball.prototype._lookupIndex.bind(this))
+  this.archive = cached(SingleTarball.prototype._lookupMeta.bind(this))
   this.archive.refresh()
 }
 
@@ -120,7 +120,7 @@ SingleTarball.prototype.append = function (filepath, size, cb) {
                 archive.index[filepath] = { offset: start, size: size }
 
                 // 12. Write the new index to the end of the archive.
-                appendIndex(fd, headerStart + 512 + size + leftover, archive.index, done)
+                appendMeta(fd, headerStart + 512 + size + leftover, archive.meta, done)
               })
             })
           }, function (err) {
@@ -214,7 +214,7 @@ SingleTarball.prototype.pop = function (name, cb) {
         delete archive.index[fname]
 
         withWritableFile(self.filepath, function (fd, done) {
-          appendIndex(fd, offset, archive.index, done)
+          appendMeta(fd, offset, archive.meta, done)
         }, function (err) {
           if (err) return done(err)
           self.archive.refresh(done)
@@ -225,7 +225,7 @@ SingleTarball.prototype.pop = function (name, cb) {
 }
 
 // Search the tar archive backwards for the index file.
-SingleTarball.prototype._lookupIndex = function (cb) {
+SingleTarball.prototype._lookupMeta = function (cb) {
   var self = this
 
   fs.stat(this.filepath, function (err, stat) {
@@ -234,7 +234,8 @@ SingleTarball.prototype._lookupIndex = function (cb) {
 
     // Archive is fresh & empty
     if (size < 1024) {
-      return cb(null, { index: {}, indexOffset: 0, fileSize: size })
+      var index = {}
+      return cb(null, { index: index, indexOffset: 0, fileSize: size, meta: {index: index} })
     }
 
     fs.open(self.filepath, 'r', function (err, fd) {
@@ -242,15 +243,21 @@ SingleTarball.prototype._lookupIndex = function (cb) {
 
       tarUtil.readFinalFile(fd, size, function (err, buf, offset) {
         if (err) return cb(err)
-        var index
+        var meta
         try {
-          index = JSON.parse(buf.toString())
+          meta = JSON.parse(buf.toString())
         } catch (e) {
           return cb(e)
         }
         fs.close(fd, function (err) {
           if (err) return cb(err)
-          cb(null, { index: index, indexOffset: offset, fileSize: size })
+          // if in old format (2.x.x), upgrade to new format (3.x.x and [hopefully] later)
+          if (!meta.index) {
+            var newMeta = { index: meta }
+            cb(null, { index: newMeta.index, indexOffset: offset, fileSize: size, meta: newMeta })
+          } else {
+            cb(null, { index: meta.index, indexOffset: offset, fileSize: size, meta: meta })
+          }
         })
       })
     })
@@ -284,8 +291,8 @@ function toPaddedOctal (number, length) {
   return padding + octal
 }
 
-function appendIndex (fd, pos, index, cb) {
-  var data = Buffer.from(JSON.stringify(index), 'utf8')
+function appendMeta (fd, pos, meta, cb) {
+  var data = Buffer.from(JSON.stringify(meta), 'utf8')
 
   var header = tarHeader.encode({
     name: '___index.json',

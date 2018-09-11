@@ -15,7 +15,7 @@ test('can append to a new file', function (t) {
     fromString(data).pipe(tarball.append('hello.txt', function (err) {
       t.error(err, 'append ok')
 
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 2, 'two entries')
@@ -26,7 +26,6 @@ test('can append to a new file', function (t) {
 
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        var index = JSON.parse(res[1].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: data.length } })
 
         cleanup()
@@ -50,7 +49,7 @@ test('can append to an existing file', function (t) {
       fromString(data).pipe(tarball.append('beep.md', function (err) {
         t.error(err, 'append ok')
 
-        parseTarball(filepath, function (err, res) {
+        parseTarball(filepath, function (err, res, index) {
           t.error(err, 'parsed tarball ok')
 
           t.equals(res.length, 3, '3 entries')
@@ -65,7 +64,6 @@ test('can append to an existing file', function (t) {
 
           t.equals(res[2].name, '___index.json', 'contents match')
           t.equals(res[2].type, 'file', 'type matches')
-          var index = JSON.parse(res[2].data.toString())
           t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
           cleanup()
@@ -97,7 +95,7 @@ test('two concurrent writes succeed as expected', function (t) {
     }))
 
     function check () {
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 3, '3 entries')
@@ -112,7 +110,6 @@ test('two concurrent writes succeed as expected', function (t) {
 
         t.equals(res[2].name, '___index.json', 'contents match')
         t.equals(res[2].type, 'file', 'type matches')
-        var index = JSON.parse(res[2].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
         cleanup()

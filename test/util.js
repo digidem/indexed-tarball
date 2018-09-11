@@ -26,5 +26,8 @@ function parseTarball (filepath, cb) {
     })
   })
 
-  ex.once('finish', cb.bind(null, error, res))
+  ex.once('finish', function () {
+    var index = JSON.parse(res[res.length - 1].data.toString()).index
+    cb(error, res, index)
+  })
 }

@@ -24,7 +24,7 @@ test('can pop an archive with two files', function (t) {
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
 
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 2, '2 entries')
@@ -35,7 +35,6 @@ test('can pop an archive with two files', function (t) {
 
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        var index = JSON.parse(res[1].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 } })
 
         cleanup()
@@ -59,14 +58,13 @@ test('can pop an archive with one file', function (t) {
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
 
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 1, '1 entry')
 
         t.equals(res[0].name, '___index.json', 'contents match')
         t.equals(res[0].type, 'file', 'type matches')
-        var index = JSON.parse(res[0].data.toString())
         t.deepEquals(index, {})
 
         cleanup()
@@ -95,7 +93,7 @@ test('can pop the last file in the 2nd archive of a multi-file archive', functio
     tarball.pop(function (err) {
       t.error(err, 'pop ok')
 
-      parseTarball(filepath, function (err, res) {
+      parseTarball(filepath, function (err, res, index) {
         t.error(err, 'parsed tarball ok')
 
         t.equals(res.length, 2, '2 entries')
@@ -104,16 +102,14 @@ test('can pop the last file in the 2nd archive of a multi-file archive', functio
         t.equals(res[0].data.toString(), 'greetings friend!', 'content matches')
         t.equals(res[1].name, '___index.json', 'contents match')
         t.equals(res[1].type, 'file', 'type matches')
-        var index = JSON.parse(res[1].data.toString())
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 } })
 
-        parseTarball(filepath + '.1', function (err, res) {
+        parseTarball(filepath + '.1', function (err, res, index) {
           t.error(err, 'parsed tarball ok')
 
           t.equals(res.length, 1, '1 entry')
           t.equals(res[0].name, '___index.json', 'contents match')
           t.equals(res[0].type, 'file', 'type matches')
-          var index = JSON.parse(res[0].data.toString())
           t.deepEquals(index, {})
 
           cleanup()
@@ -146,20 +142,18 @@ test('can pop the file in the 1st archive of a multi-file archive', function (t)
       tarball.pop(function (err) {
         t.error(err, 'pop ok')
 
-        parseTarball(filepath, function (err, res) {
+        parseTarball(filepath, function (err, res, index) {
           t.error(err, 'parsed tarball ok')
           t.equals(res.length, 1, '1 entry')
           t.equals(res[0].name, '___index.json', 'contents match')
           t.equals(res[0].type, 'file', 'type matches')
-          var index = JSON.parse(res[0].data.toString())
           t.deepEquals(index, {})
 
-          parseTarball(filepath + '.1', function (err, res) {
+          parseTarball(filepath + '.1', function (err, res, index) {
             t.error(err, 'parsed tarball ok')
             t.equals(res.length, 1, '1 entry')
             t.equals(res[0].name, '___index.json', 'contents match')
             t.equals(res[0].type, 'file', 'type matches')
-            var index = JSON.parse(res[0].data.toString())
             t.deepEquals(index, {})
 
             cleanup()
