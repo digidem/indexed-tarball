@@ -92,6 +92,14 @@ Returns a readable stream of the file at `filepath`.
 
 Calls `cb` with a list of the paths and metadata (byte offsets) of the files within the archive.
 
+## tarball.userdata([data, ]cb)
+
+Retrieves or sets the current userdata for the tarball.
+
+indexed-tarball already stores an index in the tarball itself, so you can store arbitrary user data here as well if you'd like.
+
+If `data` is given, the object is JSON encoded and stored in the tarball as well. If only `cb` is given, the current userdata will be retrieved.
+
 ## Install
 
 With [npm](https://npmjs.org/) installed, run

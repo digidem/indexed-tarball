@@ -224,6 +224,54 @@ SingleTarball.prototype.pop = function (name, cb) {
   })
 }
 
+SingleTarball.prototype.userdata = function (data, cb) {
+  if (data && !cb && typeof data === 'function') {
+    cb = data
+    data = null
+  }
+  var self = this
+
+  if (!data) {
+    // get
+    this.lock.readLock(function (release) {
+      function done (err, res) {
+        release()
+        cb(err, res)
+      }
+
+      self.archive.value(function (err, archive) {
+        if (err) return done(err)
+        done(null, archive.meta.userdata || {})
+      })
+    })
+  } else {
+    // set
+    this.lock.writeLock(function (release) {
+      function done (err) {
+        release()
+        cb(err)
+      }
+
+      self.archive.value(function (err, archive) {
+        if (err) return done(err)
+
+        var offset = archive.indexOffset
+        fs.truncate(self.filepath, offset, function (err) {
+          if (err) return done(err)
+
+          withWritableFile(self.filepath, function (fd, done) {
+            archive.meta.userdata = data
+            appendMeta(fd, offset, archive.meta, done)
+          }, function (err) {
+            if (err) return done(err)
+            self.archive.refresh(done)
+          })
+        })
+      })
+    })
+  }
+}
+
 // Search the tar archive backwards for the index file.
 SingleTarball.prototype._lookupMeta = function (cb) {
   var self = this

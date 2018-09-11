@@ -114,6 +114,7 @@ MultiTarball.prototype.read = function (filepath) {
 
 MultiTarball.prototype.pop = function (cb) {
   var self = this
+
   this.lock.writeLock(function (release) {
     function done (err) {
       release()
@@ -124,6 +125,27 @@ MultiTarball.prototype.pop = function (cb) {
       if (err) return done(err)
       else if (!tarball) return done()
       tarball.pop(done)
+    })
+  })
+}
+
+MultiTarball.prototype.userdata = function (data, cb) {
+  if (data && !cb && typeof data === 'function') {
+    cb = data
+    data = null
+  }
+  var self = this
+
+  this.lock.writeLock(function (release) {
+    function done (err, res) {
+      release()
+      cb(err, res)
+    }
+
+    self._getLastPopulatedTarball(function (err, tarball) {
+      if (err) return done(err)
+      else if (!tarball) return done()
+      tarball.userdata(data, done)
     })
   })
 }

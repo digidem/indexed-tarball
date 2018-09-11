@@ -29,3 +29,7 @@ IndexedTarball.prototype.read = function (filepath) {
 IndexedTarball.prototype.pop = function (name, cb) {
   this.impl.pop(name, cb)
 }
+
+IndexedTarball.prototype.userdata = function (data, cb) {
+  this.impl.userdata(data, cb)
+}
