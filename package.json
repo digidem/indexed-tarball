@@ -10,7 +10,7 @@
   "bugs": "https://github.com/noffle/indexed-tarball/issues",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/*.js",
+    "test": "tape test/*.js test/integrity/*.js",
     "lint": "standard"
   },
   "keywords": [],
