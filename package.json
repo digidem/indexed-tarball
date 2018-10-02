@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "collect-stream": "^1.2.1",
+    "md5": "^2.2.1",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
     "standard": "~10.0.0",
