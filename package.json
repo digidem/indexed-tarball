@@ -24,8 +24,10 @@
   },
   "devDependencies": {
     "collect-stream": "^1.2.1",
-    "tape": "~4.6.2",
-    "standard": "~10.0.0"
+    "mkdirp": "^0.5.1",
+    "ncp": "^2.0.0",
+    "standard": "~10.0.0",
+    "tape": "~4.6.2"
   },
   "license": "MIT"
 }
