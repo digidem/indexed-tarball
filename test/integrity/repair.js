@@ -66,6 +66,28 @@ testFixture('no NUL trailer', 'no-trailer.tar', {
   }
 })
 
+testFixture('partial index (cut @ header)', 'partial-index-header.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
+})
+
+testFixture('partial index (cut @ content)', 'partial-index-content.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
+})
+
 testFixture('good tarball (sans index)', 'good-no-index.tar', {
   'osm-p2p-db.tar': {
     size: 10240,
