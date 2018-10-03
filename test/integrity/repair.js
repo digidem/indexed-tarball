@@ -66,22 +66,47 @@ testFixture('no NUL trailer', 'no-trailer.tar', {
   }
 })
 
-return
-
-test('no NUL trailer', function (t) {
-  check(path.join(__dirname, 'fixtures', 'no-trailer.tar'), function (err, res) {
-    t.error(err)
-    t.deepEquals(res, { indexMissing: false, state: 'partial-trailer', len: 0 })
-    t.end()
-  })
+testFixture('good tarball (sans index)', 'good-no-index.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
 })
 
-test('partial index', function (t) {
-  check(path.join(__dirname, 'fixtures', 'partial-index.tar'), function (err, res) {
-    t.error(err)
-    t.deepEquals(res, { indexMissing: false, state: 'malformed-final-file', offset: 26624 })
-    t.end()
-  })
+testFixture('partial NUL trailer (sans index)', 'partial-trailer-no-index.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
 })
 
+testFixture('no NUL trailer (sans index)', 'no-trailer-no-index.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
+})
+
+testFixture('truncated final file (sans index)', 'partial-final-file-no-index.tar', {
+  'osm-p2p-db.tar': {
+    size: 10240,
+    md5: '4751d44c06370befaa629c791a34245c'
+  },
+  '___index.json': {
+    size: 54,
+    md5: 'c18f94481449e80d580269bd159dea96'
+  }
+})
 
