@@ -10,7 +10,7 @@
   "bugs": "https://github.com/noffle/indexed-tarball/issues",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/*.js test/integrity/*.js",
+    "test": "tape test/*.js",
     "lint": "standard"
   },
   "keywords": [],
@@ -24,11 +24,8 @@
   },
   "devDependencies": {
     "collect-stream": "^1.2.1",
-    "md5": "^2.2.1",
-    "mkdirp": "^0.5.1",
-    "ncp": "^2.0.0",
-    "standard": "~10.0.0",
-    "tape": "~4.6.2"
+    "tape": "~4.6.2",
+    "standard": "~10.0.0"
   },
   "license": "MIT"
 }
