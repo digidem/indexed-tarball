@@ -2,6 +2,7 @@ var Tarball = require('..')
 var path = require('path')
 var tmp = require('tmp')
 var test = require('tape')
+var fs = require('fs')
 var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
 
@@ -116,5 +117,23 @@ test('two concurrent writes succeed as expected', function (t) {
         t.end()
       })
     }
+  })
+})
+
+test('REGRESSION: check that writing a size=512 file doesn\'t add an extra NUL sector', function (t) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
+    t.error(err, 'tmpdir setup')
+
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath)
+    var data = Buffer.alloc(512).fill(32)
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
+      t.error(err, 'append ok')
+
+      var stat = fs.statSync(filepath)
+      t.equals(stat.size, 512 * 6, 'tar archive is 6 sectors')
+      cleanup()
+      t.end()
+    }))
   })
 })

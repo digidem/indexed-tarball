@@ -79,14 +79,13 @@ SingleTarball.prototype.append = function (filepath, size, cb) {
       })
       appendStream.write(header)
 
-      // byte offset of size field
-      var sizePos = (fsOpts.start || 0) + 124
-
       // 5. Write data.
       t.pipe(appendStream)
       t.on('end', function () {
         // 6. Pad the remaining bytes to fit a 512-byte block.
         var leftover = 512 - (size % 512)
+        if (leftover === 512) leftover = 0
+
         fs.appendFile(self.filepath, Buffer.alloc(leftover), function (err) {
           // TODO: file left in a bad state! D:
           if (err) return done(err)
