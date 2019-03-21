@@ -137,3 +137,21 @@ test('REGRESSION: check that writing a size=512 file doesn\'t add an extra NUL s
     }))
   })
 })
+
+test('REGRESSION: check that writing a size=0 file doesn\'t fail', function (t) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
+    t.error(err, 'tmpdir setup')
+
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath)
+    var data = Buffer.alloc(0)
+    fromString(data).pipe(tarball.append('hello.txt', function (err) {
+      t.error(err, 'append ok')
+
+      var stat = fs.statSync(filepath)
+      t.equals(stat.size, 512 * 5, 'tar archive is 5 sectors')
+      cleanup()
+      t.end()
+    }))
+  })
+})
