@@ -170,6 +170,8 @@ SingleTarball.prototype.read = function (filepath) {
         return
       }
 
+      if (entry.size === 0) return process.nextTick(release)
+
       pump(
         fs.createReadStream(self.filepath, { start: entry.offset + 512, end: entry.offset + 512 + entry.size - 1 }),
         t,
