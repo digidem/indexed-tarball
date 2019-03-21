@@ -90,3 +90,24 @@ test('can read all files in an archive with many files', function (t) {
     }
   })
 })
+
+test('REGRESSION: can read a size=0 file', function (t) {
+  tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
+    t.error(err, 'tmpdir setup')
+
+    var filepath = path.join(dir, 'file.tar')
+    var tarball = new Tarball(filepath)
+    var data = 'greetings friend!'
+    tarball.append('hello.txt', function (err) {
+      t.error(err, 'append ok')
+
+      collect(tarball.read('hello.txt'), function (err, data) {
+        t.error(err, 'read ok')
+        t.deepEquals(data, [])
+
+        cleanup()
+        t.end()
+      })
+    }).end()
+  })
+})
