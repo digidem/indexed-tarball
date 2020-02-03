@@ -142,7 +142,7 @@ SingleTarball.prototype.list = function (cb) {
   this.lock.readLock(function (release) {
     self.archive.value(function (err, archive) {
       release()
-      cb(err, Object.keys(archive.index))
+      cb(err, err ? null : Object.keys(archive.index))
     })
   })
 }
