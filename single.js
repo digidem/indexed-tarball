@@ -66,6 +66,7 @@ SingleTarball.prototype.append = function (filepath, size, cb) {
       }
       if (fsOpts.start < 0) fsOpts.start = 0
       var appendStream = fs.createWriteStream(self.filepath, fsOpts)
+      appendStream.once('error', done)
 
       // 4. Write tar header, without size info (yet).
       var header = tarHeader.encode({
@@ -80,8 +81,9 @@ SingleTarball.prototype.append = function (filepath, size, cb) {
       appendStream.write(header)
 
       // 5. Write data.
-      t.pipe(appendStream)
-      t.on('end', function () {
+      pump(t, appendStream, function (err) {
+        if (err) return done(err)
+
         // 6. Pad the remaining bytes to fit a 512-byte block.
         var leftover = 512 - (size % 512)
         if (leftover === 512) leftover = 0
