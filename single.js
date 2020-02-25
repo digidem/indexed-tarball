@@ -84,6 +84,15 @@ SingleTarball.prototype.append = function (filepath, size, cb) {
       pump(t, appendStream, function (err) {
         if (err) return done(err)
 
+        // Detect ENOSPC. This comes up when only one stream write happened,
+        // which will not trigger an ENOSPC error.
+        // Tracked by https://github.com/nodejs/node/issues/31908
+        if (size > appendStream.bytesWritten) {
+          var err = new Error('insufficient disk space')
+          err.code = 'ENOSPC'
+          return done(err)
+        }
+
         // 6. Pad the remaining bytes to fit a 512-byte block.
         var leftover = 512 - (size % 512)
         if (leftover === 512) leftover = 0
