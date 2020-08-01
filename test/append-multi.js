@@ -4,6 +4,7 @@ var tmp = require('tmp')
 var test = require('tape')
 var fromString = require('../lib/util').fromString
 var parseTarball = require('./util').parseTarball
+var rimraf = require('rimraf')
 
 test('can append to a new file', function (t) {
   tmp.dir({unsafeCleanup: true}, function (err, dir, cleanup) {
@@ -28,6 +29,7 @@ test('can append to a new file', function (t) {
         t.equals(res[1].type, 'file', 'type matches')
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: data.length } })
 
+        rimraf.sync(filepath)
         cleanup()
         t.end()
       })
@@ -66,6 +68,7 @@ test('can append to an existing file', function (t) {
           t.equals(res[2].type, 'file', 'type matches')
           t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
+          rimraf.sync(filepath)
           cleanup()
           t.end()
         })
@@ -108,6 +111,7 @@ test('second append overflows into second tarball', function (t) {
             t.equals(res[1].type, 'file', 'type matches')
             t.deepEquals(index, { 'beep.md': { offset: 0, size: 11 } })
 
+            rimraf.sync(filepath)
             cleanup()
             t.end()
           })
@@ -155,6 +159,7 @@ test('two concurrent writes succeed as expected', function (t) {
         t.equals(res[2].type, 'file', 'type matches')
         t.deepEquals(index, { 'hello.txt': { offset: 0, size: 17 }, 'beep.md': { offset: 1024, size: 11 } })
 
+        rimraf.sync(filepath)
         cleanup()
         t.end()
       })
@@ -215,6 +220,7 @@ test('two concurrent writes causing overflow succeed as expected', function (t) 
             'deep.md': { offset: 1024, size: 11 }
           })
 
+          rimraf.sync(filepath)
           cleanup()
           t.end()
         })
