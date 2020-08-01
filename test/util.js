@@ -29,7 +29,7 @@ function parseTarball (filepath, cb) {
   ex.once('finish', function () {
     try {
       var meta = JSON.parse(res[res.length - 1].data.toString())
-      cb(error, res, meta.index, meta)
+      process.nextTick(cb, error, res, meta.index, meta)
     } catch (e) {
       cb(e)
     }
