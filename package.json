@@ -15,6 +15,7 @@
   },
   "keywords": [],
   "dependencies": {
+    "custom-error-class": "^1.0.0",
     "pump": "^3.0.0",
     "read-only-stream": "^2.0.0",
     "rwlock": "^5.0.0",
