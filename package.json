@@ -21,7 +21,7 @@
     "rwlock": "^5.0.0",
     "tar-stream": "^1.6.1",
     "through2": "^2.0.3",
-    "tmp": "0.0.33"
+    "tmp": "0.2.4"
   },
   "devDependencies": {
     "collect-stream": "^1.2.1",
